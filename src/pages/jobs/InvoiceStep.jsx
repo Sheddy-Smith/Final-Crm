@@ -15,6 +15,7 @@ import JobReportList from "@/components/jobs/JobReportList";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import useMultiplierStore from "@/store/multiplierStore";
 
 const InvoiceStep = () => {
   const [records, setRecords] = useState([]);
@@ -81,10 +82,18 @@ const InvoiceStep = () => {
   const jobSheetEstimate = JSON.parse(localStorage.getItem("jobSheetEstimate") || "[]");
   const extraWork = JSON.parse(localStorage.getItem("extraWork") || "[]");
 
-  // Total Calculation (Multiplier static from Job Sheet/Extra Work)
+  const { getCategoryMultiplier, getMultiplierByWorkType } = useMultiplierStore();
+
   const calculateTotal = (item) => {
     const cost = parseFloat(item.cost) || 0;
-    const multiplier = parseFloat(item.multiplier) || 1;
+    let multiplier = 1;
+
+    if (item.category) {
+      multiplier = getCategoryMultiplier(item.category.trim());
+    } else if (item.workBy) {
+      multiplier = getMultiplierByWorkType(item.workBy);
+    }
+
     return cost * multiplier;
   };
 
@@ -148,7 +157,7 @@ const handleSaveInvoice = () => {
     item: item.item,
     condition: item.condition,
     cost: parseFloat(item.cost) || 0,
-    total: (parseFloat(item.cost) || 0) * (parseFloat(item.multiplier) || 1),
+    total: calculateTotal(item),
   }));
 
   const newInvoice = {

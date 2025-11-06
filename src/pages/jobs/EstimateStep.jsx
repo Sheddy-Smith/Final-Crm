@@ -8,6 +8,7 @@ import ConfirmModal from "@/components/ui/ConfirmModal";
 import { PlusCircle, Save, Printer } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import useMultiplierStore from "@/store/multiplierStore";
 
 const EstimateStep = () => {
   const [items, setItems] = useState([]);
@@ -25,12 +26,7 @@ const EstimateStep = () => {
     status: "in-progress",
   });
 
-  const defaultMultipliers = {
-    Hardware: 2,
-    Steel: 1.5,
-    Labour: 2,
-    Parts: 1.5,
-  };
+  const { getCategoryMultiplier, getMultiplierByWorkType } = useMultiplierStore();
 
   useEffect(() => {
     const saved = localStorage.getItem("inspectionItems");
@@ -85,10 +81,15 @@ const EstimateStep = () => {
 
   const calculateTotal = (item) => {
     const cost = parseFloat(item.cost) || 0;
-    const customMultiplier = parseFloat(item.multiplier) || null;
-    const categoryMultiplier = defaultMultipliers[item.category?.trim()] || 1;
-    const finalMultiplier = customMultiplier ?? categoryMultiplier;
-    return cost * finalMultiplier;
+    let multiplier = 1;
+
+    if (item.category) {
+      multiplier = getCategoryMultiplier(item.category.trim());
+    } else if (item.workBy) {
+      multiplier = getMultiplierByWorkType(item.workBy);
+    }
+
+    return cost * multiplier;
   };
 
   const subTotal = items.reduce((acc, item) => acc + calculateTotal(item), 0);
@@ -277,30 +278,32 @@ const EstimateStep = () => {
               <th className="p-2 border dark:border-gray-700">Item</th>
               <th className="p-2 border dark:border-gray-700">Condition</th>
               <th className="p-2 border dark:border-gray-700">Cost</th>
-              <th className="p-2 border dark:border-gray-700">Multiplier</th>
               <th className="p-2 border dark:border-gray-700">Total</th>
             </tr>
           </thead>
           <tbody>
             {items.length === 0 && (
               <tr>
-                <td colSpan={6} className="p-4 text-center text-gray-500">
+                <td colSpan={5} className="p-4 text-center text-gray-500">
                   No inspection items.
                 </td>
               </tr>
             )}
-            {items.map((item, index) => (
-              <tr key={index} className="border-b dark:border-gray-700">
-                <td className="p-2 border dark:border-gray-700">{item.category}</td>
-                <td className="p-2 border dark:border-gray-700">{item.item}</td>
-                <td className="p-2 border dark:border-gray-700">{item.condition}</td>
-                <td className="p-2 border dark:border-gray-700">{item.cost}</td>
-                <td className="p-2 border dark:border-gray-700">
-                  {item.multiplier || defaultMultipliers[item.category?.trim()] || 1}
-                </td>
-                <td className="p-2 border dark:border-gray-700">{calculateTotal(item).toFixed(2)}</td>
-              </tr>
-            ))}
+            {items.map((item, index) => {
+              const multiplier = item.category ? getCategoryMultiplier(item.category.trim()) : (item.workBy ? getMultiplierByWorkType(item.workBy) : 1);
+              return (
+                <tr key={index} className="border-b dark:border-gray-700">
+                  <td className="p-2 border dark:border-gray-700">
+                    {item.category}
+                    <span className="text-xs text-gray-500 ml-2">({multiplier}x)</span>
+                  </td>
+                  <td className="p-2 border dark:border-gray-700">{item.item}</td>
+                  <td className="p-2 border dark:border-gray-700">{item.condition}</td>
+                  <td className="p-2 border dark:border-gray-700">₹{item.cost}</td>
+                  <td className="p-2 border dark:border-gray-700 font-semibold">₹{calculateTotal(item).toFixed(2)}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
 

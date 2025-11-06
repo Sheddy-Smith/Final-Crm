@@ -9,6 +9,7 @@ import JobReportList from "@/components/jobs/JobReportList";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import useMultiplierStore from "@/store/multiplierStore";
 
 const ChalanStep = () => {
   const [records, setRecords] = useState([]);
@@ -85,9 +86,18 @@ const ChalanStep = () => {
     setDiscount(disc);
   }, []);
 
+  const { getCategoryMultiplier, getMultiplierByWorkType } = useMultiplierStore();
+
   const calculateTotal = (item) => {
     const cost = parseFloat(item.cost) || 0;
-    const multiplier = parseFloat(item.multiplier) || 1;
+    let multiplier = 1;
+
+    if (item.category) {
+      multiplier = getCategoryMultiplier(item.category.trim());
+    } else if (item.workBy) {
+      multiplier = getMultiplierByWorkType(item.workBy);
+    }
+
     return cost * multiplier;
   };
 
@@ -158,7 +168,6 @@ const ChalanStep = () => {
                   <th className="p-2 border">Item</th>
                   <th className="p-2 border">Condition</th>
                   <th className="p-2 border">Cost (₹)</th>
-                  <th className="p-2 border">Multiplier</th>
                   <th className="p-2 border">Total (₹)</th>
                   <th className="p-2 border">Work By</th>
                   <th className="p-2 border">Notes</th>
@@ -168,50 +177,60 @@ const ChalanStep = () => {
 
               <tbody>
                 {/* Estimate Data */}
-                {jobSheetEstimate.map((item, idx) => (
-                  <tr key={`est-${idx}`} className="border-b">
-                    <td className="p-2">{item.category}</td>
-                    <td className="p-2">{item.item}</td>
-                    <td className="p-2">{item.condition}</td>
-                    <td className="p-2">{item.cost}</td>
-                    <td className="p-2">{parseFloat(item.multiplier).toFixed(2)}</td>
-                    <td className="p-2">{calculateTotal(item).toFixed(2)}</td>
-                    <td className="p-2">{item.workBy || "Labour"}</td>
-                    <td className="p-2">{item.notes || ""}</td>
-                    <td className="p-2 text-center">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDelete("estimate", idx)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
+                {jobSheetEstimate.map((item, idx) => {
+                  const multiplier = item.category ? getCategoryMultiplier(item.category.trim()) : (item.workBy ? getMultiplierByWorkType(item.workBy) : 1);
+                  return (
+                    <tr key={`est-${idx}`} className="border-b">
+                      <td className="p-2">
+                        {item.category}
+                        <span className="text-xs text-gray-500 ml-1">({multiplier}x)</span>
+                      </td>
+                      <td className="p-2">{item.item}</td>
+                      <td className="p-2">{item.condition}</td>
+                      <td className="p-2">₹{item.cost}</td>
+                      <td className="p-2 font-semibold">₹{calculateTotal(item).toFixed(2)}</td>
+                      <td className="p-2">{item.workBy || "Labour"}</td>
+                      <td className="p-2">{item.notes || ""}</td>
+                      <td className="p-2 text-center">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDelete("estimate", idx)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
 
                 {/* Extra Work Data */}
-                {extraWork.map((item, idx) => (
-                  <tr key={`extra-${idx}`} className="border-b">
-                    <td className="p-2">{item.category}</td>
-                    <td className="p-2">{item.item}</td>
-                    <td className="p-2">{item.condition}</td>
-                    <td className="p-2">{item.cost}</td>
-                    <td className="p-2">{parseFloat(item.multiplier).toFixed(2)}</td>
-                    <td className="p-2">{calculateTotal(item).toFixed(2)}</td>
-                    <td className="p-2">{item.workBy || "Labour"}</td>
-                    <td className="p-2">{item.notes || ""}</td>
-                    <td className="p-2 text-center">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDelete("extra", idx)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
+                {extraWork.map((item, idx) => {
+                  const multiplier = item.category ? getCategoryMultiplier(item.category.trim()) : (item.workBy ? getMultiplierByWorkType(item.workBy) : 1);
+                  return (
+                    <tr key={`extra-${idx}`} className="border-b">
+                      <td className="p-2">
+                        {item.category}
+                        <span className="text-xs text-gray-500 ml-1">({multiplier}x)</span>
+                      </td>
+                      <td className="p-2">{item.item}</td>
+                      <td className="p-2">{item.condition}</td>
+                      <td className="p-2">₹{item.cost}</td>
+                      <td className="p-2 font-semibold">₹{calculateTotal(item).toFixed(2)}</td>
+                      <td className="p-2">{item.workBy || "Labour"}</td>
+                      <td className="p-2">{item.notes || ""}</td>
+                      <td className="p-2 text-center">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDelete("extra", idx)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
 
