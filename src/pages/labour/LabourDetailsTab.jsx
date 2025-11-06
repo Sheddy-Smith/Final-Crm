@@ -5,7 +5,7 @@ import Modal from '@/components/ui/Modal';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import SearchBar from '@/components/common/SearchBar';
 import { toast } from 'sonner';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, PlusCircle } from 'lucide-react';
 
 const LabourForm = ({ labour, onSave, onCancel }) => {
     const [formData, setFormData] = useState(labour || { name: '', phone: '', rate: '', skill: 'Welder', address: '', email: '', creditLimit: 0, notes: '' });
@@ -58,7 +58,7 @@ const LabourForm = ({ labour, onSave, onCancel }) => {
 };
 
 const LabourDetailsTab = () => {
-    const { labours, updateLabour, deleteLabour } = useLabourStore();
+    const { labours, addLabour, updateLabour, deleteLabour } = useLabourStore();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingLabour, setEditingLabour] = useState(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -81,10 +81,21 @@ const LabourDetailsTab = () => {
         setEditingLabour(labour);
         setIsModalOpen(true);
     };
+    const handleAdd = () => {
+        setEditingLabour(null);
+        setIsModalOpen(true);
+    };
+
     const handleSave = (data) => {
-        updateLabour({ ...editingLabour, ...data });
-        toast.success("Labour details updated!");
+        if (editingLabour) {
+            updateLabour({ ...editingLabour, ...data });
+            toast.success("Labour details updated!");
+        } else {
+            addLabour(data);
+            toast.success("Labour added!");
+        }
         setIsModalOpen(false);
+        setEditingLabour(null);
     };
     const handleDelete = (labour) => {
         setLabourToDelete(labour);
@@ -98,8 +109,14 @@ const LabourDetailsTab = () => {
 
     return (
         <div>
-            <SearchBar onSearch={handleSearch} onReset={handleReset} searchFields={['name', 'phone', 'skill']} />
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Edit Labour Details">
+            <div className="flex justify-between items-center mb-4">
+                <SearchBar onSearch={handleSearch} onReset={handleReset} searchFields={['name', 'phone', 'skill']} />
+                <Button onClick={handleAdd}>
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Add Labour
+                </Button>
+            </div>
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingLabour ? "Edit Labour Details" : "Add New Labour"}>
                 <LabourForm labour={editingLabour} onSave={handleSave} onCancel={() => setIsModalOpen(false)} />
             </Modal>
             <ConfirmModal

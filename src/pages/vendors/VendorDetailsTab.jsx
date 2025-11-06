@@ -5,7 +5,7 @@ import Modal from '@/components/ui/Modal';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import SearchBar from '@/components/common/SearchBar';
 import { toast } from 'sonner';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, PlusCircle } from 'lucide-react';
 
 const VendorForm = ({ vendor, onSave, onCancel }) => {
     const [formData, setFormData] = useState( vendor || { name: '', phone: '', address: '', gstin: '', category: '', email: '', creditLimit: 0, notes: '' });
@@ -58,7 +58,7 @@ const VendorForm = ({ vendor, onSave, onCancel }) => {
 };
 
 const VendorDetailsTab = () => {
-    const { vendors, updateVendor, deleteVendor } = useVendorStore();
+    const { vendors, addVendor, updateVendor, deleteVendor } = useVendorStore();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingVendor, setEditingVendor] = useState(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -81,10 +81,21 @@ const VendorDetailsTab = () => {
         setEditingVendor(vendor);
         setIsModalOpen(true);
     };
+    const handleAdd = () => {
+        setEditingVendor(null);
+        setIsModalOpen(true);
+    };
+
     const handleSave = (vendorData) => {
-        updateVendor({ ...editingVendor, ...vendorData });
-        toast.success("Vendor updated!");
+        if (editingVendor) {
+            updateVendor({ ...editingVendor, ...vendorData });
+            toast.success("Vendor updated!");
+        } else {
+            addVendor(vendorData);
+            toast.success("Vendor added!");
+        }
         setIsModalOpen(false);
+        setEditingVendor(null);
     };
 
     const handleDelete = (vendor) => {
@@ -101,8 +112,14 @@ const VendorDetailsTab = () => {
 
     return (
         <div>
-            <SearchBar onSearch={handleSearch} onReset={handleReset} searchFields={['name', 'phone', 'category']} />
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Edit Vendor">
+            <div className="flex justify-between items-center mb-4">
+                <SearchBar onSearch={handleSearch} onReset={handleReset} searchFields={['name', 'phone', 'category']} />
+                <Button onClick={handleAdd}>
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Add Vendor
+                </Button>
+            </div>
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingVendor ? "Edit Vendor" : "Add New Vendor"}>
                 <VendorForm vendor={editingVendor} onSave={handleSave} onCancel={() => setIsModalOpen(false)} />
             </Modal>
              <ConfirmModal

@@ -5,7 +5,7 @@ import Modal from '@/components/ui/Modal';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import SearchBar from '@/components/common/SearchBar';
 import { toast } from 'sonner';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, PlusCircle } from 'lucide-react';
 
 const CustomerForm = ({ customer, onSave, onCancel }) => {
     const [formData, setFormData] = useState(
@@ -81,7 +81,7 @@ const CustomerForm = ({ customer, onSave, onCancel }) => {
 }
 
 const ContactsTab = () => {
-    const { customers, updateCustomer, deleteCustomer } = useCustomerStore();
+    const { customers, addCustomer, updateCustomer, deleteCustomer } = useCustomerStore();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -112,10 +112,21 @@ const ContactsTab = () => {
         setIsModalOpen(true);
     };
 
+    const handleAdd = () => {
+        setEditingCustomer(null);
+        setIsModalOpen(true);
+    };
+
     const handleSave = (customerData) => {
-        updateCustomer({ ...editingCustomer, ...customerData });
-        toast.success("Customer updated!");
+        if (editingCustomer) {
+            updateCustomer({ ...editingCustomer, ...customerData });
+            toast.success("Customer updated!");
+        } else {
+            addCustomer(customerData);
+            toast.success("Customer added!");
+        }
         setIsModalOpen(false);
+        setEditingCustomer(null);
     };
 
     const handleDelete = (customer) => {
@@ -131,13 +142,19 @@ const ContactsTab = () => {
 
     return (
         <div>
-            <SearchBar
-                onSearch={handleSearch}
-                onReset={handleReset}
-                searchFields={['name', 'phone', 'address', 'GSTIN']}
-            />
+            <div className="flex justify-between items-center mb-4">
+                <SearchBar
+                    onSearch={handleSearch}
+                    onReset={handleReset}
+                    searchFields={['name', 'phone', 'address', 'GSTIN']}
+                />
+                <Button onClick={handleAdd}>
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Add Customer
+                </Button>
+            </div>
 
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Edit Customer">
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingCustomer ? "Edit Customer" : "Add New Customer"}>
                 <CustomerForm customer={editingCustomer} onSave={handleSave} onCancel={() => setIsModalOpen(false)} />
             </Modal>
             <ConfirmModal

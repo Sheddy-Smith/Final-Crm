@@ -5,7 +5,7 @@ import Modal from '@/components/ui/Modal';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import SearchBar from '@/components/common/SearchBar';
 import { toast } from 'sonner';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, PlusCircle } from 'lucide-react';
 
 const SupplierForm = ({ supplier, onSave, onCancel }) => {
     const [formData, setFormData] = useState(supplier || { name: '', phone: '', category: 'Hardware', address: '', gstin: '', email: '', creditLimit: 0, notes: '' });
@@ -58,7 +58,7 @@ const SupplierForm = ({ supplier, onSave, onCancel }) => {
 };
 
 const SupplierDetailsTab = () => {
-    const { suppliers, updateSupplier, deleteSupplier } = useSupplierStore();
+    const { suppliers, addSupplier, updateSupplier, deleteSupplier } = useSupplierStore();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingSupplier, setEditingSupplier] = useState(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -81,10 +81,21 @@ const SupplierDetailsTab = () => {
         setEditingSupplier(supplier);
         setIsModalOpen(true);
     };
+    const handleAdd = () => {
+        setEditingSupplier(null);
+        setIsModalOpen(true);
+    };
+
     const handleSave = (data) => {
-        updateSupplier({ ...editingSupplier, ...data });
-        toast.success("Supplier updated!");
+        if (editingSupplier) {
+            updateSupplier({ ...editingSupplier, ...data });
+            toast.success("Supplier updated!");
+        } else {
+            addSupplier(data);
+            toast.success("Supplier added!");
+        }
         setIsModalOpen(false);
+        setEditingSupplier(null);
     };
     const handleDelete = (supplier) => {
         setSupplierToDelete(supplier);
@@ -98,8 +109,14 @@ const SupplierDetailsTab = () => {
 
     return (
         <div>
-            <SearchBar onSearch={handleSearch} onReset={handleReset} searchFields={['name', 'phone', 'category']} />
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Edit Supplier">
+            <div className="flex justify-between items-center mb-4">
+                <SearchBar onSearch={handleSearch} onReset={handleReset} searchFields={['name', 'phone', 'category']} />
+                <Button onClick={handleAdd}>
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Add Supplier
+                </Button>
+            </div>
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingSupplier ? "Edit Supplier" : "Add New Supplier"}>
                 <SupplierForm supplier={editingSupplier} onSave={handleSave} onCancel={() => setIsModalOpen(false)} />
             </Modal>
             <ConfirmModal
