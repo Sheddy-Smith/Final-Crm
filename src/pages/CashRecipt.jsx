@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Card from "../components/ui/Card";
 import {  Trash2 } from "lucide-react";
 import SearchBar from "../components/common/SearchBar";
+import { toast } from 'sonner';
 
 const CashRecipt = () => {
   const [open, setOpen] = useState(false);
@@ -17,10 +18,18 @@ const CashRecipt = () => {
   const [status, setStatus] = useState("Not Deposited");
   const [date, setDate] = useState("");
   const [filteredReceipts, setFilteredReceipts] = useState([]);
+  const [customerNames, setCustomerNames] = useState([]);
+  const [showNameDropdown, setShowNameDropdown] = useState(false);
 
   useEffect(() => {
     setFilteredReceipts(receipts);
   }, [receipts]);
+
+  useEffect(() => {
+    const savedBills = JSON.parse(localStorage.getItem("customerBills") || "[]");
+    const uniqueNames = [...new Set(savedBills.map(bill => bill.customerName).filter(Boolean))];
+    setCustomerNames(uniqueNames);
+  }, [open]);
 
   // Total calculation
   const total = receipts.reduce((sum, r) => sum + Number(r.amount || 0), 0);
@@ -41,6 +50,14 @@ const CashRecipt = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    const savedBills = JSON.parse(localStorage.getItem("customerBills") || "[]");
+    const customerExists = savedBills.some(bill => bill.customerName === name);
+
+    if (!customerExists) {
+      toast.error("Customer name not found in Customer Ledger. Please add customer first.");
+      return;
+    }
+
     const newReceipt = {
       id: Date.now(),
       name,
@@ -52,6 +69,20 @@ const CashRecipt = () => {
     };
 
     setReceipts([...receipts, newReceipt]);
+
+    const updatedBills = savedBills.map(bill => {
+      if (bill.customerName === name) {
+        const currentAmount = Number(bill.amountReceived || bill.totalAmount || 0);
+        return {
+          ...bill,
+          amountReceived: currentAmount + Number(amount)
+        };
+      }
+      return bill;
+    });
+    localStorage.setItem("customerBills", JSON.stringify(updatedBills));
+
+    toast.success("Receipt added and customer ledger updated!");
     resetForm();
     setOpen(false);
   };
@@ -172,14 +203,38 @@ const CashRecipt = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-3">
-              <input
-                type="text"
-                placeholder="Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full border p-2 rounded"
-                required
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Customer Name (from Ledger)"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setShowNameDropdown(true);
+                  }}
+                  onFocus={() => setShowNameDropdown(true)}
+                  className="w-full border p-2 rounded"
+                  required
+                />
+                {showNameDropdown && customerNames.length > 0 && (
+                  <div className="absolute z-10 w-full bg-white border rounded-lg shadow-lg max-h-40 overflow-y-auto mt-1">
+                    {customerNames
+                      .filter(n => n.toLowerCase().includes(name.toLowerCase()))
+                      .map((customerName, idx) => (
+                        <div
+                          key={idx}
+                          className="p-2 hover:bg-gray-100 cursor-pointer"
+                          onClick={() => {
+                            setName(customerName);
+                            setShowNameDropdown(false);
+                          }}
+                        >
+                          {customerName}
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
 
               <input
                 type="text"
