@@ -1,6 +1,7 @@
 // // Invoice.jsx
+import { Edit,  Trash2Icon ,Trash2, Save } from "lucide-react";
 import React, { useState, useEffect } from "react";
-
+import Card  from "../../components/ui/Card";
 const INVOICES_KEY = "malwa_invoices_v1";
 const SUPPLIER_LEDGER_KEY = "malwa_supplier_ledger_v1";
 
@@ -136,10 +137,10 @@ const Invoice = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Invoices</h2>
-          <p className="text-sm text-gray-600">
+          <h2 className="text-2xl font-bold">Sell-Invoices</h2>
+          {/* <p className="text-sm text-gray-600">
             Manage supplier invoices with GST & payment status.
-          </p>
+          </p> */}
         </div>
 
         <button
@@ -147,9 +148,9 @@ const Invoice = () => {
             resetForm();
             setShowForm(true);
           }}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
         >
-          + New Invoice
+          Add Sell-Invoice
         </button>
       </div>
 
@@ -198,17 +199,17 @@ const Invoice = () => {
                     <td className="p-2 border text-sm">
                       <button
                         onClick={() => handleEdit(inv)}
-                        className="px-2 py-1 text-xs bg-yellow-100 rounded"
+                        className="px-1 py-1 text-sm text-blue-800 rounded"
                       >
-                        Edit
+                        <Edit/>
                       </button>
                     </td>
                     <td className="p-2 border text-sm">
                       <button
                         onClick={() => handleDelete(inv.id)}
-                        className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded"
+                        className="px-2 py-1 text-xs  text-red-700 rounded"
                       >
-                        Delete
+                     <Trash2Icon/>
                       </button>
                     </td>
                   </tr>
@@ -348,6 +349,106 @@ const Invoice = () => {
           </div>
         </div>
       )}
+
+
+{/* Second page of Invoice copmonent */}
+
+
+<Card className="mt-6">
+  <h4 className="font-bold text-2xl">Invoice Data</h4>
+
+  <div className="overflow-x-auto mt-[10px]">
+    <table className="min-w-full border border-gray-300 text-sm">
+      <thead className="bg-gray-100">
+        <tr>
+          <th className="border p-2">Category</th>
+          <th className="border p-2">Item</th>
+          <th className="border p-2 text-right">Cost (₹)</th>
+          <th className="border p-2 text-right">Total (₹)</th>
+          <th className="border p-2 text-center">Action</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {(() => {
+          // ✅ Fetch invoices from localStorage
+          const invoices = JSON.parse(localStorage.getItem("invoices")) || [];
+
+          // ✅ Combine all invoice items (jobSheetEstimate + extraWork)
+          const allItems = invoices.flatMap(inv => [
+            ...(inv.items || [])
+          ]);
+
+          // ✅ Delete function
+          const handleDelete = (index) => {
+            if (window.confirm("Are you sure you want to delete this invoice?")) {
+              const updatedInvoices = invoices.filter((_, i) => i !== index);
+              localStorage.setItem("invoices", JSON.stringify(updatedInvoices));
+              window.location.reload();
+            }
+          };
+
+          if (allItems.length === 0) {
+            return (
+              <tr>
+                <td colSpan="5" className="text-center p-2 text-gray-500">
+                  No invoice data available
+                </td>
+              </tr>
+            );
+          }
+
+          return allItems.map((item, index) => (
+            <tr key={index}>
+              <td className="border p-2">{item.category || "—"}</td>
+              <td className="border p-2">{item.item || "—"}</td>
+              <td className="border p-2 text-right">
+                {item.cost ? `₹${item.cost}` : "—"}
+              </td>
+              <td className="border p-2 text-right">
+                {item.total ? `₹${item.total.toFixed(2)}` : "—"}
+              </td>
+              <td className="border p-2 text-center">
+                <Trash2
+                  className="h-4 w-4 text-red-500 cursor-pointer inline"
+                  onClick={() => handleDelete(index)}
+                />
+              </td>
+            </tr>
+          ));
+        })()}
+      </tbody>
+    </table>
+  </div>
+
+  {/* ✅ Totals section */}
+  <div className="mt-4 text-right font-semibold space-y-1">
+    {(() => {
+      const invoices = JSON.parse(localStorage.getItem("invoices")) || [];
+      const allItems = invoices.flatMap(inv => inv.items || []);
+      const subtotal = allItems.reduce((sum, item) => sum + (item.total || 0), 0);
+      const gst = subtotal * 0.18;
+      const grandTotal = subtotal + gst;
+
+      return (
+        <>
+          <div>Subtotal: ₹{subtotal.toFixed(2)}</div>
+          <div>GST (18%): ₹{gst.toFixed(2)}</div>
+          <div className="font-extrabold text-lg">
+            Grand Total: ₹{grandTotal.toFixed(2)}
+          </div>
+        </>
+      );
+    })()}
+  </div>
+</Card>
+
+
+
+
+
+
+
     </div>
   );
 };
@@ -355,220 +456,4 @@ const Invoice = () => {
 export default Invoice;
 
 
-  //  Runnimg code 1
-// import React, { useState, useEffect } from "react";
-
-// const Invoice = () => {
-//   const [supplier, setSupplier] = useState("");
-//   const [item, setItem] = useState("");
-//   const [qty, setQty] = useState("");
-//   const [rate, setRate] = useState("");
-//   const [gst, setGst] = useState("");
-//   const [date, setDate] = useState("");
-//   const [status, setStatus] = useState("Unpaid");
-
-//   const [invoices, setInvoices] = useState([]);
-//   const [editingId, setEditingId] = useState(null);
-
-//   // Load from localStorage
-//   useEffect(() => {
-//     const stored = localStorage.getItem("invoices");
-//     if (stored) setInvoices(JSON.parse(stored));
-//   }, []);
-
-//   // Save to localStorage
-//   useEffect(() => {
-//     localStorage.setItem("invoices", JSON.stringify(invoices));
-//   }, [invoices]);
-
-//   // Helper for ID
-//   const nextId = () =>
-//     invoices.length > 0 ? Math.max(...invoices.map((i) => i.id)) + 1 : 1;
-
-//   // Add or Update Invoice
-//   const handleAddOrUpdate = () => {
-//     if (!supplier || !item || !qty || !rate || !gst || !date) {
-//       alert("Please fill all fields");
-//       return;
-//     }
-
-//     const baseTotal = Number(qty) * Number(rate);
-//     const gstAmount = (baseTotal * Number(gst)) / 100;
-//     const finalTotal = baseTotal + gstAmount;
-
-//     const invoiceObj = {
-//       id: editingId || nextId(),
-//       supplier: supplier.trim(),
-//       item: item.trim(),
-//       qty: Number(qty),
-//       rate: Number(rate),
-//       price: Number(rate), // 👈 alias for GST Ledger
-//       gst: Number(gst),
-//       gstAmount, // 👈 explicit GST amount
-//       baseTotal,
-//       finalTotal,
-//       totalAmount: finalTotal, // 👈 alias for GST Ledger
-//       date,
-//       status,
-//       paymentStatus: status, // 👈 alias for GST Ledger
-//     };
-
-//     if (editingId) {
-//       setInvoices(
-//         invoices.map((inv) => (inv.id === editingId ? invoiceObj : inv))
-//       );
-//       setEditingId(null);
-//     } else {
-//       setInvoices([...invoices, invoiceObj]);
-//     }
-
-//     // Reset fields
-//     setSupplier("");
-//     setItem("");
-//     setQty("");
-//     setRate("");
-//     setGst("");
-//     setDate("");
-//     setStatus("Unpaid");
-//   };
-
-//   const handleEdit = (id) => {
-//     const inv = invoices.find((i) => i.id === id);
-//     if (!inv) return;
-
-//     setSupplier(inv.supplier);
-//     setItem(inv.item);
-//     setQty(inv.qty);
-//     setRate(inv.rate);
-//     setGst(inv.gst);
-//     setDate(inv.date);
-//     setStatus(inv.status);
-//     setEditingId(id);
-//   };
-
-//   const handleDelete = (id) => {
-//     setInvoices(invoices.filter((i) => i.id !== id));
-//   };
-
-//   return (
-//     <div className="p-6 bg-gray-50 min-h-screen">
-//       <h2 className="text-2xl font-bold mb-4 text-center">Invoice Manager</h2>
-
-//       {/* Input Form */}
-//       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-//         <input
-//           type="text"
-//           placeholder="Supplier"
-//           className="border p-2 rounded"
-//           value={supplier}
-//           onChange={(e) => setSupplier(e.target.value)}
-//         />
-//         <input
-//           type="text"
-//           placeholder="Item"
-//           className="border p-2 rounded"
-//           value={item}
-//           onChange={(e) => setItem(e.target.value)}
-//         />
-//         <input
-//           type="number"
-//           placeholder="Qty"
-//           className="border p-2 rounded"
-//           value={qty}
-//           onChange={(e) => setQty(e.target.value)}
-//         />
-//         <input
-//           type="number"
-//           placeholder="Rate"
-//           className="border p-2 rounded"
-//           value={rate}
-//           onChange={(e) => setRate(e.target.value)}
-//         />
-//         <input
-//           type="number"
-//           placeholder="GST %"
-//           className="border p-2 rounded"
-//           value={gst}
-//           onChange={(e) => setGst(e.target.value)}
-//         />
-//         <input
-//           type="date"
-//           className="border p-2 rounded"
-//           value={date}
-//           onChange={(e) => setDate(e.target.value)}
-//         />
-//         <select
-//           className="border p-2 rounded"
-//           value={status}
-//           onChange={(e) => setStatus(e.target.value)}
-//         >
-//           <option value="Unpaid">Unpaid</option>
-//           <option value="Paid">Paid</option>
-//         </select>
-//       </div>
-
-//       <button
-//         className="bg-blue-600 text-white px-6 py-2 rounded-lg shadow hover:bg-blue-700"
-//         onClick={handleAddOrUpdate}
-//       >
-//         {editingId ? "Update Invoice" : "Add Invoice"}
-//       </button>
-
-//       {/* Invoice Table */}
-//       <div className="mt-8">
-//         <table className="w-full border-collapse border">
-//           <thead>
-//             <tr className="bg-gray-200 text-left">
-//               <th className="border p-2">ID</th>
-//               <th className="border p-2">Supplier</th>
-//               <th className="border p-2">Item</th>
-//               <th className="border p-2">Qty</th>
-//               <th className="border p-2">Price</th>
-//               <th className="border p-2">GST%</th>
-//               <th className="border p-2">GST Amt</th>
-//               <th className="border p-2">Total</th>
-//               <th className="border p-2">Date</th>
-//               <th className="border p-2">Payment</th>
-//               <th className="border p-2">Actions</th>
-//             </tr>
-//           </thead>
-//           <tbody>
-//             {invoices.map((inv) => (
-//               <tr key={inv.id} className="hover:bg-gray-100">
-//                 <td className="border p-2">{inv.id}</td>
-//                 <td className="border p-2">{inv.supplier}</td>
-//                 <td className="border p-2">{inv.item}</td>
-//                 <td className="border p-2">{inv.qty}</td>
-//                 <td className="border p-2">{inv.price}</td>
-//                 <td className="border p-2">{inv.gst}%</td>
-//                 <td className="border p-2">{inv.gstAmount}</td>
-//                 <td className="border p-2">{inv.totalAmount}</td>
-//                 <td className="border p-2">{inv.date}</td>
-//                 <td className="border p-2">{inv.paymentStatus}</td>
-//                 <td className="border p-2 space-x-2">
-//                   <button
-//                     className="bg-yellow-400 px-3 py-1 rounded"
-//                     onClick={() => handleEdit(inv.id)}
-//                   >
-//                     Edit
-//                   </button>
-//                   <button
-//                     className="bg-red-500 text-white px-3 py-1 rounded"
-//                     onClick={() => handleDelete(inv.id)}
-//                   >
-//                     Delete
-//                   </button>
-//                 </td>
-//               </tr>
-//             ))}
-//           </tbody>
-//         </table>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default Invoice;
-
-
-
+ 

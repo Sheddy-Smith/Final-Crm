@@ -32,10 +32,15 @@ const sidebarNavItems = [
   ]},
   { title: "Accounts", href: "/accounts", icon: Landmark, children: [
       { title: "Purchase", href: "/accounts?tab=purchase" }, { title: "Voucher", href: "/accounts?tab=voucher" },
-      { title: "Invoice", href: "/accounts?tab=invoice" }, { title: "Challan", href: "/accounts?tab=challan" },
+      { title: "Sell-Invoice", href: "/accounts?tab=invoice" },
+      { title: "Purchase-Challan", href: "/accounts?tab=challan" },
+      
+
       { title: "GST Ledger", href: "/accounts?tab=GST" },
   ]},
   { title: "Summary", href: "/summary", icon: BarChart },
+   { title: "Cash-Recipt", href: "/CashRecipt", icon: BarChart },
+    
 ];
 
 const SidebarContent = ({ onLinkClick }) => {

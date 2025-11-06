@@ -6,6 +6,7 @@ import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import { toast } from 'sonner';
 import { PlusCircle } from 'lucide-react';
+import SupplierLedger from './supplier/SupplierLedger';
 
 const SupplierForm = ({ onSave, onCancel }) => {
     const [formData, setFormData] = useState({ name: '', phone: '', category: 'Hardware' });
@@ -29,7 +30,7 @@ const Placeholder = ({ title }) => <div className="dark:text-dark-text"><h3 clas
 
 const tabs = [
     { id: 'details', label: 'Supplier Details', component: SupplierDetailsTab },
-    { id: 'ledger', label: 'Supplier Ledger', component: () => <Placeholder title="Supplier Ledger" /> },
+    { id: 'ledger', label: 'Supplier Ledger', component: SupplierLedger  },
 ];
 
 const Supplier = () => {

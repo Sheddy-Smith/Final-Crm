@@ -1,55 +1,8 @@
-// import Card from "@/components/ui/Card";
-// import { Trash2Icon } from "lucide-react";
-
-// const LedgerTab = () => (
-//     <>
-//     <Card>
-//        <table className="border-2 w-full h-[70px]" >
-//    <tr className="border-2">
-//     <th className="border-2">Category</th>
-//     <th className="border-2">Item</th>
-//     <th className="border-2">Condition</th>
-//     <th className="border-2">Cost (₹)</th>
-//     <th className="border-2">Multiplier	</th>
-//     <th className="border-2">Total (₹)</th>
-//     <th className="border-2">Work By</th>
-//     <th className="border-2">Notes</th>
-//     <th className="border-2">Action</th>
-// </tr>
-//    <tbody>
-// <tr className="border-2 text-center">
-//     <td className="border-2">Parts</td>
-//     <th className="border-2">tank</th>
-//     <th className="border-2">ok</th>
-//     <th className="border-2">100</th>
-//     <th className="border-2">1</th>
-//     <th className="border-2">100</th>
-//     <th className="border-2">Labour</th>
-//     <th className="border-2"> salman bhai   </th>
-//     <th className="border-2">
-//      <button className=" pointer-curson text-red-500">   <Trash2Icon /> </button> 
-//           </th>
-// </tr>
-//    </tbody>
-
-
-//        </table>
-
-
-
-//     </Card>
-//     </>
-// );
-// export default LedgerTab;
-
-
-//  <p className="dark:text-dark-text-secondary text-sm">This table will automatically update after an Estimate, JobSheet, Challan, or Invoice is created, showing Date, Document Type, Number, Amount, Discount, and Payment Status.</p>
 
 
 
 
-
-// Final and completed code 
+// // completed and final code 
 import { useState, useEffect } from "react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -59,51 +12,252 @@ const CustomerLedger = () => {
   const [ledgerRows, setLedgerRows] = useState([]);
   const [discount, setDiscount] = useState(0);
 
-  // Load Challan data
+  // Popups
+  const [showAddPopup, setShowAddPopup] = useState(false);
+  const [showViewPopup, setShowViewPopup] = useState(false);
+  const [showBillPopup, setShowBillPopup] = useState(false);
+
+  const [newRow, setNewRow] = useState({
+    category: "",
+    item: "",
+    condition: "",
+    cost: "",
+    multiplier: "",
+    workBy: "",
+    notes: "",
+  });
+
+  const [selectedRow, setSelectedRow] = useState(null);
+
+  // Bill / Payment details
+  const [billDetails, setBillDetails] = useState({
+    customerName: "",
+    date: "",
+    paymentStatus: "Unpaid",
+    paymentMode: "Cash",
+    amountReceived: "",
+    totalAmount: "",
+    notes: "",
+  });
+
+  const [savedBills, setSavedBills] = useState([]);
+
   useEffect(() => {
     const estimateData = JSON.parse(localStorage.getItem("jobSheetEstimate") || "[]");
     const extraData = JSON.parse(localStorage.getItem("extraWork") || "[]");
+    const storedCustomers = JSON.parse(localStorage.getItem("customerLedgerExtra") || "[]");
     const disc = parseFloat(localStorage.getItem("estimateDiscount")) || 0;
+    const storedBills = JSON.parse(localStorage.getItem("customerBills") || "[]");
 
-    // Transform to ledger format
     const transformedRows = [
       ...estimateData.map((item) => ({
         ...item,
         total: (parseFloat(item.cost || 0) * parseFloat(item.multiplier || 1)).toFixed(2),
+        source: "estimate",
       })),
       ...extraData.map((item) => ({
         ...item,
         total: (parseFloat(item.cost || 0) * parseFloat(item.multiplier || 1)).toFixed(2),
+        source: "extraWork",
       })),
+      ...storedCustomers.map((item) => ({ ...item, source: "addedCustomer" })),
     ];
 
     setLedgerRows(transformedRows);
     setDiscount(disc);
-    localStorage.setItem("customerLedger", JSON.stringify(transformedRows));
+    setSavedBills(storedBills);
   }, []);
 
-  // Delete row
   const handleDelete = (index) => {
-    const updated = ledgerRows.filter((_, i) => i !== index);
+    const updated = [...ledgerRows];
+    const removed = updated.splice(index, 1)[0];
     setLedgerRows(updated);
-    localStorage.setItem("customerLedger", JSON.stringify(updated));
+
+    if (removed.source === "addedCustomer") {
+      const storedCustomers = JSON.parse(localStorage.getItem("customerLedgerExtra") || "[]");
+      const filtered = storedCustomers.filter(
+        (r) =>
+          !(
+            r.category === removed.category &&
+            r.item === removed.item &&
+            r.cost === removed.cost &&
+            r.multiplier === removed.multiplier
+          )
+      );
+      localStorage.setItem("customerLedgerExtra", JSON.stringify(filtered));
+    }
   };
 
-  // Totals
+  const handleAddCustomer = () => {
+    const total = (parseFloat(newRow.cost || 0) * parseFloat(newRow.multiplier || 1)).toFixed(2);
+    const rowToAdd = { ...newRow, total, source: "addedCustomer" };
+
+    const updatedRows = [...ledgerRows, rowToAdd];
+    setLedgerRows(updatedRows);
+
+    const storedCustomers = JSON.parse(localStorage.getItem("customerLedgerExtra") || "[]");
+    localStorage.setItem("customerLedgerExtra", JSON.stringify([...storedCustomers, rowToAdd]));
+
+    setNewRow({
+      category: "",
+      item: "",
+      condition: "",
+      cost: "",
+      multiplier: "",
+      workBy: "",
+      notes: "",
+    });
+    setShowAddPopup(false);
+  };
+
+  const handleRowClick = (row) => {
+    setSelectedRow(row);
+    setShowViewPopup(true);
+  };
+
+  const handleOpenBill = () => {
+    setBillDetails({
+      customerName: selectedRow?.workBy || "",
+      date: new Date().toISOString().split("T")[0],
+      paymentStatus: "Unpaid",
+      paymentMode: "Cash",
+      amountReceived: "",
+      totalAmount: selectedRow?.total || "",
+      notes: selectedRow?.notes || "",
+    });
+    setShowBillPopup(true);
+  };
+
+  // ✅ Fixed version — Category & Item save with bill
+  const handleSaveBill = () => {
+    const updatedBills = [
+      ...savedBills,
+      {
+        ...billDetails,
+        category: selectedRow?.category || "",
+        item: selectedRow?.item || "",
+      },
+    ];
+    setSavedBills(updatedBills);
+    localStorage.setItem("customerBills", JSON.stringify(updatedBills));
+    setShowBillPopup(false);
+  };
+
   const subtotalEstimate = ledgerRows
-    .filter((r) => r.jobSheetNo !== undefined || r.jobSheetNo !== null)
+    .filter((r) => r.source === "estimate")
     .reduce((acc, item) => acc + parseFloat(item.total || 0), 0);
 
   const subtotalExtra = ledgerRows
-    .filter((r) => r.jobSheetNo === undefined || r.jobSheetNo === null)
+    .filter((r) => r.source === "extraWork")
     .reduce((acc, item) => acc + parseFloat(item.total || 0), 0);
 
-  const grandTotal = subtotalEstimate + subtotalExtra - discount;
+  const subtotalAdded = ledgerRows
+    .filter((r) => r.source === "addedCustomer")
+    .reduce((acc, item) => acc + parseFloat(item.total || 0), 0);
+
+  const grandTotal = subtotalEstimate + subtotalExtra + subtotalAdded - discount;
 
   return (
-    <div className="space-y-4 p-4">
-      <h3 className="text-xl font-bold mb-2">Customer Ledger</h3>
+    <div className="space-y-4 p-4 relative">
+      <div className="flex justify-between items-center">
+        <h3 className="text-xl font-bold mb-2">Customer Ledger</h3>
+      <Button onClick={() => setShowAddPopup(true)}>Add Customer</Button>
+      </div>
+        <h3 className="text-xl font-bold mb-2">Jobs sheet (Challan) </h3>
 
+      {/* Add Customer Popup */}
+      {showAddPopup && (
+        <Card className="p-4 mb-4 bg-gray-50 border">
+          <div className="grid grid-cols-2 gap-2">
+            {["category","item","condition","cost","multiplier","workBy","notes"].map((field) => (
+              <input
+                key={field}
+                placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
+                value={newRow[field]}
+                type={field==="cost"||field==="multiplier"?"number":"text"}
+                onChange={(e) => setNewRow({ ...newRow, [field]: e.target.value })}
+                className={`border p-1 ${field==="notes"?"col-span-2":""}`}
+              />
+            ))}
+          </div>
+          <div className="flex justify-end mt-2 gap-2">
+            <Button onClick={() => setShowAddPopup(false)} variant="destructive">Cancel</Button>
+            <Button onClick={handleAddCustomer}>Add</Button>
+          </div>
+        </Card>
+      )}
+
+      {/* View Row Popup */}
+      {showViewPopup && selectedRow && (
+        <Card className="p-4 mb-4 bg-gray-50 border-4 absolute top-[130px] right-[350px] z-20">
+          <div className="grid grid-cols-2 gap-2">
+            {["category",
+            "item",
+            "condition",
+            "cost",
+            "multiplier",
+            "total",
+            "workBy",
+            "notes"].map((field) => (
+              <div key={field} className={`border p-2 ${field==="notes"?"col-span-2":""}`}>
+                <strong>{field.charAt(0).toUpperCase() + field.slice(1)}:</strong> {selectedRow[field]}
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-between mt-3 text-lg">
+            <Button onClick={handleOpenBill}>Open</Button>
+            <Button onClick={() => setShowViewPopup(false)}>X</Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Bill / Payment Popup */}
+      {showBillPopup && (
+        <Card className="p-6 bg-white shadow-lg border-4 absolute top-[150px] right-[200px] z-30 w-[400px]">
+          <h2 className="text-xl font-bold mb-4">Customer Bill / Payment Details</h2>
+          <div className="space-y-2">
+            {["customerName","date","paymentStatus","paymentMode","amountReceived","totalAmount","notes"].map((field) => (
+              <div key={field} className="flex flex-col">
+                <label className="font-semibold text-sm">
+                  {field.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase())}
+                </label>
+                {field === "paymentStatus" ? (
+                  <select
+                    value={billDetails[field]}
+                    onChange={(e) => setBillDetails({ ...billDetails, [field]: e.target.value })}
+                    className="border p-1 rounded"
+                  >
+                    <option>Paid</option>
+                    <option>Unpaid</option>
+                  </select>
+                ) : field === "paymentMode" ? (
+                  <select
+                    value={billDetails[field]}
+                    onChange={(e) => setBillDetails({ ...billDetails, [field]: e.target.value })}
+                    className="border p-1 rounded"
+                  >
+                    <option>Cash</option>
+                    <option>Online</option>
+                  </select>
+                ) : (
+                  <input
+                    type={field === "date" ? "date" : "text"}
+                    value={billDetails[field]}
+                    onChange={(e) => setBillDetails({ ...billDetails, [field]: e.target.value })}
+                    className="border p-1 rounded"
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-between gap-2 mt-4">
+            <Button onClick={() => setShowBillPopup(false)} variant="destructive">X</Button>
+            <Button onClick={handleSaveBill}>Save</Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Ledger Table */}
       <Card>
         <div className="overflow-x-auto">
           <table className="min-w-full border border-gray-300 text-sm">
@@ -116,7 +270,7 @@ const CustomerLedger = () => {
                 <th className="border p-2 text-right">Multiplier</th>
                 <th className="border p-2 text-right">Total (₹)</th>
                 <th className="border p-2">Work By</th>
-                <th className="border p-2">Notes</th>
+                <th className="border p-2">Names</th>
                 <th className="border p-2 text-center">Action</th>
               </tr>
             </thead>
@@ -129,7 +283,11 @@ const CustomerLedger = () => {
                 </tr>
               ) : (
                 ledgerRows.map((row, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
+                  <tr
+                    key={index}
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => handleRowClick(row)}
+                  >
                     <td className="border p-2">{row.category}</td>
                     <td className="border p-2">{row.item}</td>
                     <td className="border p-2">{row.condition || "OK"}</td>
@@ -140,7 +298,10 @@ const CustomerLedger = () => {
                     <td className="border p-2">{row.notes || ""}</td>
                     <td className="border p-2 text-center">
                       <button
-                        onClick={() => handleDelete(index)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(index);
+                        }}
                         className="text-red-600 hover:text-red-800"
                         title="Delete Row"
                       >
@@ -154,240 +315,258 @@ const CustomerLedger = () => {
           </table>
         </div>
 
-        {/* Totals */}
         <div className="mt-4 text-right font-semibold space-y-1">
           <div>Subtotal (Estimate): ₹{subtotalEstimate.toFixed(2)}</div>
           <div>Subtotal (Extra Work): ₹{subtotalExtra.toFixed(2)}</div>
+          <div>Subtotal (Added Customers): ₹{subtotalAdded.toFixed(2)}</div>
           <div>Estimate Discount: ₹{discount.toFixed(2)}</div>
-          <div className="font-extrabold  text-lg">Grand Total: ₹{grandTotal.toFixed(2)}</div>
+          <div className="font-extrabold text-lg">Grand Total: ₹{grandTotal.toFixed(2)}</div>
         </div>
       </Card>
+
+
+
+{/* Second Challan card  Cash Receipt Data */}
+ 
+<Card className="mt-6">
+  <h4 className="font-bold text-2xl">Invoice Data</h4>
+
+  <div className="overflow-x-auto mt-[10px]">
+    <table className="min-w-full border border-gray-300 text-sm">
+      <thead className="bg-gray-100">
+        <tr>
+          <th className="border p-2">Category</th>
+          <th className="border p-2">Item</th>
+          <th className="border p-2 text-right">Cost (₹)</th>
+          <th className="border p-2 text-right">Total (₹)</th>
+          <th className="border p-2 text-center">Action</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {(() => {
+          // ✅ Fetch invoices from localStorage
+          const invoices = JSON.parse(localStorage.getItem("invoices")) || [];
+
+          // ✅ Combine all invoice items (jobSheetEstimate + extraWork)
+          const allItems = invoices.flatMap(inv => [
+            ...(inv.items || [])
+          ]);
+
+          // ✅ Delete function
+          const handleDelete = (index) => {
+            if (window.confirm("Are you sure you want to delete this invoice?")) {
+              const updatedInvoices = invoices.filter((_, i) => i !== index);
+              localStorage.setItem("invoices", JSON.stringify(updatedInvoices));
+              window.location.reload();
+            }
+          };
+
+          if (allItems.length === 0) {
+            return (
+              <tr>
+                <td colSpan="5" className="text-center p-2 text-gray-500">
+                  No invoice data available
+                </td>
+              </tr>
+            );
+          }
+
+          return allItems.map((item, index) => (
+            <tr key={index}>
+              <td className="border p-2">{item.category || "—"}</td>
+              <td className="border p-2">{item.item || "—"}</td>
+              <td className="border p-2 text-right">
+                {item.cost ? `₹${item.cost}` : "—"}
+              </td>
+              <td className="border p-2 text-right">
+                {item.total ? `₹${item.total.toFixed(2)}` : "—"}
+              </td>
+              <td className="border p-2 text-center">
+                <Trash2
+                  className="h-4 w-4 text-red-500 cursor-pointer inline"
+                  onClick={() => handleDelete(index)}
+                />
+              </td>
+            </tr>
+          ));
+        })()}
+      </tbody>
+    </table>
+  </div>
+
+  {/* ✅ Totals section */}
+  <div className="mt-4 text-right font-semibold space-y-1">
+    {(() => {
+      const invoices = JSON.parse(localStorage.getItem("invoices")) || [];
+      const allItems = invoices.flatMap(inv => inv.items || []);
+      const subtotal = allItems.reduce((sum, item) => sum + (item.total || 0), 0);
+      const gst = subtotal * 0.18;
+      const grandTotal = subtotal + gst;
+
+      return (
+        <>
+          <div>Subtotal: ₹{subtotal.toFixed(2)}</div>
+          <div>GST (18%): ₹{gst.toFixed(2)}</div>
+          <div className="font-extrabold text-lg">
+            Grand Total: ₹{grandTotal.toFixed(2)}
+          </div>
+        </>
+      );
+    })()}
+  </div>
+</Card>
+ 
+
+
+ 
+      
+
+
+
+
+{/* ---------------- Cash Receipt Data ---------------- */}
+<Card>
+<div className="mt-8">
+  <h2 className="text-lg font-bold mb-3">Cash Receipt Data</h2>
+
+  <div className="overflow-x-auto border rounded-lg">
+    <table className="min-w-full border-collapse">
+      <thead className="bg-gray-100">
+        <tr>
+          <th className="border p-2">Name</th>
+          <th className="border p-2">Purpose</th>
+          <th className="border p-2">Payment Type</th>
+          <th className="border p-2">Amount (₹)</th>
+          <th className="border p-2">Status</th>
+          <th className="border p-2">Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {(() => {
+          const receipts = JSON.parse(localStorage.getItem("cashReceipts")) || [];
+          if (receipts.length === 0) {
+            return (
+              <tr>
+                <td colSpan="6" className="text-gray-500 p-4 text-center">
+                  No Cash Receipts Found.
+                </td>
+              </tr>
+            );
+          }
+
+          const total = receipts.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+
+          return (
+            <>
+              {receipts.map((r) => (
+                <tr key={r.id} className="text-center hover:bg-gray-50">
+                  <td className="border p-2">{r.name}</td>
+                  <td className="border p-2">{r.purpose}</td>
+                  <td className="border p-2">{r.paymentType}</td>
+                  <td className="border p-2">₹{r.amount}</td>
+                  <td
+                    className={`border p-2 font-medium ${
+                      r.status === "Deposited" ? "text-green-600" : "text-red-600"
+                    }`}
+                  >
+                    {r.status}
+                  </td>
+                  <td className="border p-2">{r.date}</td>
+                </tr>
+              ))}
+
+              {/* Total Row */}
+              <tr className="bg-gray-200 font-semibold text-center">
+                <td colSpan="3" className="border p-2 text-right">
+                  Total:
+                </td>
+                <td className="border p-2">₹{total}</td>
+                <td colSpan="2"></td>
+              </tr>
+            </>
+          );
+        })()}
+      </tbody>
+    </table>
+  </div>
+</div>
+<Card/>
+
+
+
+{/* End */}
+
+
+  
+</Card>
+
+
+
+{/* End */}
+
+ {/* ✅ Saved Bills Table */}
+      {savedBills.length > 0 && (
+        <Card>
+          <h3 className="text-lg font-bold mb-2">Saved Bills / Payments</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border border-gray-300 text-sm">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="border p-2">Name</th>
+                  <th className="border p-2">Date</th>
+                  <th className="border p-2">Payment Mode</th>
+                  <th className="border p-2">Status</th>
+                  <th className="border p-2">Amount (₹)</th>
+                  <th className="border p-2">Category</th>
+                  <th className="border p-2">Item</th>
+                  <th className="border p-2 text-center">Delete</th>
+                </tr>
+              </thead>
+              <tbody>
+                {savedBills.map((bill, i) => (
+                  <tr key={i} className="hover:bg-gray-50">
+                    <td className="border p-2">{bill.customerName}</td>
+                    <td className="border p-2">{bill.date}</td>
+                    <td className="border p-2">{bill.paymentMode}</td>
+                    <td className="border p-2">{bill.paymentStatus}</td>
+                    <td className="border p-2">{parseFloat(bill.amountReceived || bill.totalAmount).toFixed(2)}</td>
+                    <td className="border p-2">{bill.category}</td>
+                    <td className="border p-2">{bill.item}</td>
+                    <td className="border p-2 text-center">
+                      <button
+                        onClick={() => {
+                          const updatedBills = savedBills.filter((_, index) => index !== i);
+                          setSavedBills(updatedBills);
+                          localStorage.setItem("customerBills", JSON.stringify(updatedBills));
+                        }}
+                        className="text-red-600 hover:text-red-800 font-semibold"
+                      >
+                      <Trash2/>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+ </Card>
+ )}
     </div>
   );
 };
 
 export default CustomerLedger;
- 
 
 
 
 
-// // src/pages/customer/LedgerTab.jsx
-//  import Card from "@/components/ui/Card";
-//  import { Trash2Icon } from "lucide-react";
-// import { useState, useEffect, useMemo } from 'react';
-// import useCustomerStore from '@/store/customerStore';
-// import Card from '@/components/ui/Card';
-// import Button from '@/components/ui/Button';
-// import { Trash2, PlusCircle } from 'lucide-react';
 
-// const LedgerTab = () => {
-//     // --- CORRECT ZUSTAND USAGE ---
-//     // Ensure you pass a FUNCTION (selector) to the hook like this:
-//     const customers = useCustomerStore(state => state.customers);
-//     const addLedgerEntry = useCustomerStore(state => state.addLedgerEntry);
-//     const deleteLedgerEntry = useCustomerStore(state => state.deleteLedgerEntry);
-//     // --- DO NOT pass a non-function variable here ---
 
-//     const [selectedCustomerId, setSelectedCustomerId] = useState('');
-//     const [showPaymentForm, setShowPaymentForm] = useState(false);
-//     const [paymentAmount, setPaymentAmount] = useState('');
-//     const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
-//     const [paymentNotes, setPaymentNotes] = useState('');
 
-//     // Effect to select the first customer by default
-//     useEffect(() => {
-//         if (!selectedCustomerId && customers && customers.length > 0) {
-//             setSelectedCustomerId(customers[0].id);
-//         }
-//         if (selectedCustomerId && customers && !customers.some(c => c.id === selectedCustomerId)) {
-//              setSelectedCustomerId(customers.length > 0 ? customers[0].id : '');
-//         }
-//     }, [customers, selectedCustomerId]);
 
-//     // Find the selected customer's data
-//     const selectedCustomer = useMemo(() => {
-//         if (!Array.isArray(customers)) {
-//             console.error("Customers state is not an array:", customers); // Debugging log
-//             return null;
-//         }
-//         return customers.find(c => c.id === selectedCustomerId);
-//     }, [customers, selectedCustomerId]);
 
-//     // Get ledger entries for the selected customer
-//     const ledgerEntries = useMemo(() => {
-//         if (!selectedCustomer || !Array.isArray(selectedCustomer.ledger)) {
-//              // console.warn("Selected customer or ledger not available or not an array"); // Debugging log
-//              return [];
-//         }
-//         return selectedCustomer.ledger;
-//     }, [selectedCustomer]);
 
-//     // Handle adding a payment
-//     const handleAddPayment = (e) => {
-//         e.preventDefault();
-//         if (!selectedCustomerId || !paymentAmount || parseFloat(paymentAmount) <= 0) {
-//             alert('Please select a customer and enter a valid payment amount.');
-//             return;
-//         }
-//         const paymentEntry = {
-//             date: paymentDate,
-//             type: 'Payment',
-//             details: `Payment Received ${paymentNotes ? '- ' + paymentNotes : ''}`,
-//             debit: 0,
-//             credit: parseFloat(paymentAmount),
-//         };
-//         addLedgerEntry(selectedCustomerId, paymentEntry);
-//         setPaymentAmount('');
-//         setPaymentDate(new Date().toISOString().split('T')[0]);
-//         setPaymentNotes('');
-//         setShowPaymentForm(false);
-//         alert('Payment recorded successfully!');
-//     };
 
-//      // Handle deleting a ledger entry
-//     const handleDeleteEntry = (entryId) => {
-//         if (window.confirm('Are you sure you want to delete this ledger entry? This cannot be undone.')) {
-//             deleteLedgerEntry(selectedCustomerId, entryId);
-//             alert('Ledger entry deleted.');
-//         }
-//     };
 
-//     // Get the final balance safely
-//     const finalBalance = ledgerEntries.length > 0 ? (ledgerEntries[0]?.balance ?? 0) : 0;
 
-//     return (
-//         <Card>
-//             {/* Header and Controls */}
-//             <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
-//                 <h3 className="text-lg font-bold dark:text-dark-text">Customer Account Ledger</h3>
-//                 <div className="flex items-center gap-2 w-full sm:w-auto">
-//                     <select
-//                         value={selectedCustomerId}
-//                         onChange={(e) => setSelectedCustomerId(e.target.value)}
-//                         className="p-2 border rounded-lg bg-transparent dark:border-gray-600 focus:ring-2 focus:ring-brand-red min-w-[200px] flex-grow sm:flex-grow-0"
-//                     >
-//                         <option value="">-- Select Customer --</option>
-//                         {Array.isArray(customers) && customers.map(c => (
-//                             <option key={c.id} value={c.id}>{c.name} ({c.phone || 'No Phone'})</option>
-//                         ))}
-//                     </select>
-//                     <Button
-//                         variant="secondary"
-//                         onClick={() => setShowPaymentForm(true)}
-//                         disabled={!selectedCustomerId}
-//                     >
-//                         <PlusCircle className="h-4 w-4 mr-2" /> Record Payment
-//                     </Button>
-//                 </div>
-//             </div>
-
-//             {/* Ledger Display Area */}
-//             {selectedCustomerId && selectedCustomer ? (
-//                 <>
-//                     <div className="overflow-x-auto">
-//                         <table className="w-full text-sm dark:text-dark-text-secondary border">
-//                             {/* Table Head */}
-//                             <thead className="bg-gray-50 dark:bg-gray-700 text-left">
-//                                 <tr>
-//                                     <th className="p-2 border">Date</th>
-//                                     <th className="p-2 border">Type</th>
-//                                     <th className="p-2 border">Details</th>
-//                                     <th className="p-2 border text-right">Debit (₹)</th>
-//                                     <th className="p-2 border text-right">Credit (₹)</th>
-//                                     <th className="p-2 border text-right">Balance (₹)</th>
-//                                     <th className="p-2 border text-center">Action</th>
-//                                 </tr>
-//                             </thead>
-//                             {/* Table Body */}
-//                             <tbody>
-//                                 {ledgerEntries.length > 0 ? ledgerEntries.map(entry => (
-//                                     <tr key={entry.entryId} className="border-b dark:border-gray-700 even:bg-gray-50 dark:even:bg-gray-800/50">
-//                                         <td className="p-2 border">{new Date(entry.date).toLocaleDateString()}</td>
-//                                         <td className="p-2 border">{entry.type}</td>
-//                                         <td className="p-2 border">{entry.details}</td>
-//                                         <td className="p-2 border text-right">{(entry.debit ?? 0) > 0 ? (entry.debit ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</td>
-//                                         <td className="p-2 border text-right">{(entry.credit ?? 0) > 0 ? (entry.credit ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</td>
-//                                         <td className={`p-2 border text-right font-medium ${(entry.balance ?? 0) < 0 ? 'text-red-600' : 'dark:text-dark-text'}`}>
-//                                             {Math.abs(entry.balance ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {(entry.balance ?? 0) < 0 ? ' Cr' : ' Dr'}
-//                                         </td>
-//                                         <td className="p-2 border text-center">
-//                                             {entry.type === 'Payment' && ( // Only allow deleting payments for now
-//                                                 <Button variant="ghost" size="sm" onClick={() => handleDeleteEntry(entry.entryId)} className="p-1 h-auto">
-//                                                     <Trash2 className="h-4 w-4 text-red-500"/>
-//                                                 </Button>
-//                                             )}
-//                                         </td>
-//                                     </tr>
-//                                 )) : (
-//                                     <tr>
-//                                         <td colSpan="7" className="text-center p-8 text-gray-500 dark:text-dark-text-secondary">
-//                                             No ledger entries found for this customer.
-//                                         </td>
-//                                     </tr>
-//                                 )}
-//                             </tbody>
-//                             {/* Table Footer */}
-//                             {ledgerEntries.length > 0 && (
-//                                 <tfoot className="bg-gray-100 dark:bg-gray-800 font-bold">
-//                                     <tr>
-//                                         <td colSpan="5" className="p-2 border text-right dark:text-dark-text">Final Balance:</td>
-//                                         <td className={`p-2 border text-right ${finalBalance < 0 ? 'text-red-600' : 'dark:text-dark-text'}`}>
-//                                             {Math.abs(finalBalance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {finalBalance < 0 ? ' Cr' : ' Dr'}
-//                                         </td>
-//                                         <td className="p-2 border"></td>
-//                                     </tr>
-//                                 </tfoot>
-//                             )}
-//                         </table>
-//                     </div>
-//                 </>
-//             ) : (
-//                 // Message when no customer is selected or available
-//                 <p className="text-center p-8 text-gray-500 dark:text-dark-text-secondary">
-//                     {Array.isArray(customers) && customers.length > 0 ? 'Please select a customer to view their ledger.' : 'No customers found. Please add a customer first.'}
-//                 </p>
-//             )}
-
-//              {/* Payment Form Modal */}
-//             {showPaymentForm && selectedCustomer && (
-//                  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={() => setShowPaymentForm(false)}>
-//                     <form onSubmit={handleAddPayment} className="bg-white dark:bg-dark-card p-6 rounded-xl shadow-xl w-full max-w-sm space-y-4" onClick={e => e.stopPropagation()}>
-//                         <h4 className="text-lg font-bold mb-2 dark:text-dark-text">Record Payment for {selectedCustomer?.name}</h4>
-//                         <div>
-//                             <label className="text-sm dark:text-dark-text-secondary block mb-1">Amount (₹)</label>
-//                             <input
-//                                 type="number" step="0.01" value={paymentAmount}
-//                                 onChange={(e) => setPaymentAmount(e.target.value)}
-//                                 className="w-full p-2 border rounded-lg bg-transparent dark:border-gray-600 dark:text-dark-text focus:ring-2 focus:ring-brand-red" required
-//                             />
-//                         </div>
-//                          <div>
-//                             <label className="text-sm dark:text-dark-text-secondary block mb-1">Date</label>
-//                             <input
-//                                 type="date" value={paymentDate}
-//                                 onChange={(e) => setPaymentDate(e.target.value)}
-//                                 className="w-full p-2 border rounded-lg bg-transparent dark:border-gray-600 dark:text-dark-text focus:ring-2 focus:ring-brand-red" required
-//                             />
-//                         </div>
-//                          <div>
-//                             <label className="text-sm dark:text-dark-text-secondary block mb-1">Notes (Optional)</label>
-//                             <input
-//                                 type="text" value={paymentNotes}
-//                                 onChange={(e) => setPaymentNotes(e.target.value)}
-//                                 className="w-full p-2 border rounded-lg bg-transparent dark:border-gray-600 dark:text-dark-text focus:ring-2 focus:ring-brand-red"
-//                                 placeholder="e.g., Cheque No, UPI Ref"
-//                             />
-//                         </div>
-//                         <div className="flex justify-end gap-2 pt-2">
-//                             <Button type="button" variant="secondary" onClick={() => setShowPaymentForm(false)}>Cancel</Button>
-//                             <Button type="submit">Save Payment</Button>
-//                         </div>
-//                     </form>
-//                 </div>
-//             )}
-//         </Card>
-//     );
-// };
-
-// export default LedgerTab;

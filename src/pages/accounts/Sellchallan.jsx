@@ -1,412 +1,386 @@
-import React, { useState, useEffect } from "react";
-import { PlusCircle, Edit, Trash } from "lucide-react";
+
+import { useState, useEffect } from "react";
+import Card from "@/components/ui/Card";
+import Button from "@/components/ui/Button";
+import { Trash2 } from "lucide-react";
 
 const SellChallan = () => {
-  const [open, setOpen] = useState(false);
-  const [editingId, setEditingId] = useState(null);
+  const [ledgerRows, setLedgerRows] = useState([]);
+  const [discount, setDiscount] = useState(0);
+  const [showAddPopup, setShowAddPopup] = useState(false);
+  const [showKacchePopup, setShowKacchePopup] = useState(false);
 
-  // LocalStorage se data load karna
-  const [challans, setChallans] = useState(() => {
-    const saved = localStorage.getItem("Sellchallans");
-    return saved
-      ? JSON.parse(saved)
-      : [
-          {
-            id: 1,
-            challanNo: "CH-001",
-            date: "2025-09-13",
-            source: "Indore Supplier",
-            item: "Cement Bags",
-            qty: 100,
-            price: 350,
-            total: 35000,
-            payment: "Pending",
-          },
-        ];
+  const [newRow, setNewRow] = useState({
+    category: "",
+    item: "",
+    condition: "",
+    cost: "",
+    multiplier: "",
+    workBy: "",
+    notes: "",
   });
 
-  // Save to localStorage
+  const [newChallan, setNewChallan] = useState({
+    customerName: "",
+    date: "",
+    payment: "",
+    amountReceived: "",
+    totalAmount: "",
+    notes: "",
+  });
+
+  const [selectedRow, setSelectedRow] = useState(null);
+  const [savedBills, setSavedBills] = useState([]);
+  const [kaccheChallans, setKaccheChallans] = useState([]);
+
+  // Load data from localStorage
   useEffect(() => {
-    localStorage.setItem("Sellchallans", JSON.stringify(challans));
-  }, [challans]);
+    const estimateData = JSON.parse(localStorage.getItem("jobSheetEstimate") || "[]");
+    const extraData = JSON.parse(localStorage.getItem("extraWork") || "[]");
+    const storedCustomers = JSON.parse(localStorage.getItem("customerLedgerExtra") || "[]");
+    const storedBills = JSON.parse(localStorage.getItem("customerBills") || "[]");
+    const storedKacche = JSON.parse(localStorage.getItem("kaccheChallans") || "[]");
+    const disc = parseFloat(localStorage.getItem("estimateDiscount")) || 0;
 
-  // Form state
-  const [challanNo, setChallanNo] = useState("");
-  const [date, setDate] = useState("");
-  const [source, setSource] = useState("");
-  const [item, setItem] = useState("");
-  const [qty, setQty] = useState("");
-  const [price, setPrice] = useState("");
-  const [payment, setPayment] = useState("Pending");
+    const transformedRows = [
+      ...estimateData.map((item) => ({
+        ...item,
+        total: (parseFloat(item.cost || 0) * parseFloat(item.multiplier || 1)).toFixed(2),
+        source: "estimate",
+      })),
+      ...extraData.map((item) => ({
+        ...item,
+        total: (parseFloat(item.cost || 0) * parseFloat(item.multiplier || 1)).toFixed(2),
+        source: "extraWork",
+      })),
+      ...storedCustomers.map((item) => ({ ...item, source: "addedCustomer" })),
+    ];
 
-  // Reset form
-  const resetForm = () => {
-    setChallanNo("");
-    setDate("");
-    setSource("");
-    setItem("");
-    setQty("");
-    setPrice("");
-    setPayment("Pending");
-    setEditingId(null);
+    setLedgerRows(transformedRows);
+    setDiscount(disc);
+    setSavedBills(storedBills);
+    setKaccheChallans(storedKacche);
+  }, []);
+
+  // Delete ledger row
+  const handleDelete = (index) => {
+    const updated = [...ledgerRows];
+    const removed = updated.splice(index, 1)[0];
+    setLedgerRows(updated);
+
+    if (removed.source === "addedCustomer") {
+      const storedCustomers = JSON.parse(localStorage.getItem("customerLedgerExtra") || "[]");
+      const filtered = storedCustomers.filter(
+        (r) =>
+          !(
+            r.category === removed.category &&
+            r.item === removed.item &&
+            r.cost === removed.cost &&
+            r.multiplier === removed.multiplier
+          )
+      );
+      localStorage.setItem("customerLedgerExtra", JSON.stringify(filtered));
+    }
   };
 
-  // Form submit
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const total = Number(qty) * Number(price);
+  // Add new customer row
+  const handleAddCustomer = () => {
+    const total = (parseFloat(newRow.cost || 0) * parseFloat(newRow.multiplier || 1)).toFixed(2);
+    const rowToAdd = { ...newRow, total, source: "addedCustomer" };
+    const updatedRows = [...ledgerRows, rowToAdd];
+    setLedgerRows(updatedRows);
+    const storedCustomers = JSON.parse(localStorage.getItem("customerLedgerExtra") || "[]");
+    localStorage.setItem("customerLedgerExtra", JSON.stringify([...storedCustomers, rowToAdd]));
 
-    if (editingId) {
-      const updated = challans.map((c) =>
-        c.id === editingId
-          ? {
-              id: editingId,
-              challanNo,
-              date,
-              source,
-              item,
-              qty: Number(qty),
-              price: Number(price),
-              total,
-              payment,
-            }
-          : c
-      );
-      setChallans(updated);
-    } else {
-      const newChallan = {
-        id: challans.length + 1,
-        challanNo,
-        date,
-        source,
-        item,
-        qty: Number(qty),
-        price: Number(price),
-        total,
-        payment,
-      };
-      setChallans([...challans, newChallan]);
+    setNewRow({
+      category: "",
+      item: "",
+      condition: "",
+      cost: "",
+      multiplier: "",
+      workBy: "",
+      notes: "",
+    });
+    setShowAddPopup(false);
+  };
+
+  // Add new Kacche Challan
+  const handleAddKaccheChallan = () => {
+    if (!newChallan.customerName || !newChallan.date || !newChallan.totalAmount) {
+      alert("Please fill required fields (Customer Name, Date, Total Amount)");
+      return;
     }
 
-    resetForm();
-    setOpen(false);
+    const updated = [...kaccheChallans, newChallan];
+    setKaccheChallans(updated);
+    localStorage.setItem("kaccheChallans", JSON.stringify(updated));
+
+    setNewChallan({
+      customerName: "",
+      date: "",
+      payment: "",
+      amountReceived: "",
+      totalAmount: "",
+      notes: "",
+    });
+    setShowKacchePopup(false);
   };
 
-  // Edit
-  const handleEdit = (c) => {
-    setEditingId(c.id);
-    setChallanNo(c.challanNo);
-    setDate(c.date);
-    setSource(c.source);
-    setItem(c.item);
-    setQty(c.qty);
-    setPrice(c.price);
-    setPayment(c.payment);
-    setOpen(true);
-  };
+  // Totals
+  const subtotalEstimate = ledgerRows
+    .filter((r) => r.source === "estimate")
+    .reduce((acc, item) => acc + parseFloat(item.total || 0), 0);
 
-  // Delete
-  const handleDelete = (id) => {
-    const filtered = challans.filter((c) => c.id !== id);
-    setChallans(filtered);
-  };
+  const subtotalExtra = ledgerRows
+    .filter((r) => r.source === "extraWork")
+    .reduce((acc, item) => acc + parseFloat(item.total || 0), 0);
+
+  const subtotalAdded = ledgerRows
+    .filter((r) => r.source === "addedCustomer")
+    .reduce((acc, item) => acc + parseFloat(item.total || 0), 0);
+
+  const kaccheTotal = kaccheChallans.reduce(
+    (acc, ch) => acc + parseFloat(ch.totalAmount || 0),
+    0
+  );
+
+  const grandTotal = subtotalEstimate + subtotalExtra + subtotalAdded - discount;
 
   return (
-    <div className="p-6">
+    <div className="space-y-4 p-4 relative">
       {/* Header */}
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Challan Records</h2>
-        <p><u>job se challan save hoga to Sell-Challan me show hoga</u></p>
-        <button
-          onClick={() => setOpen(true)}
-          className="bg-blue-600 text-white flex px-6 py-2 gap-2 font-bold rounded hover:bg-blue-700"
-        >
-          <PlusCircle /> Add Challan
-        </button>
-      </div>
-
-      {/* Table */}
-      <div className="overflow-x-auto border rounded">
-        <table className="min-w-full border-collapse">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="p-2 border">ID</th>
-              <th className="p-2 border">Challan No</th>
-              <th className="p-2 border">Date</th>
-              <th className="p-2 border">Source</th>
-              <th className="p-2 border">Item</th>
-              <th className="p-2 border">Qty</th>
-              <th className="p-2 border">Price</th>
-              <th className="p-2 border">Total</th>
-              <th className="p-2 border">Payment</th>
-              <th className="p-2 border">Edit</th>
-              <th className="p-2 border">Delete</th>
-            </tr>
-          </thead>
-          <tbody>
-            {challans.map((c) => (
-              <tr key={c.id} className="hover:bg-gray-50 text-center">
-                <td className="p-2 border">{c.id}</td>
-                <td className="p-2 border">{c.challanNo}</td>
-                <td className="p-2 border">{c.date}</td>
-                <td className="p-2 border">{c.source}</td>
-                <td className="p-2 border">{c.item}</td>
-                <td className="p-2 border">{c.qty}</td>
-                <td className="p-2 border">{c.price}₹</td>
-                <td className="p-2 border">{c.total}₹</td>
-                <td className="p-2 border">{c.payment}</td>
-                <td className="p-2 border">
-                  <button onClick={() => handleEdit(c)}>
-                    <Edit className="text-yellow-500" />
-                  </button>
-                </td>
-                <td className="p-2 border">
-                  <button onClick={() => handleDelete(c.id)}>
-                    <Trash className="text-red-800" />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Modal */}
-      {open && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white rounded-xl shadow-lg p-6 w-96">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold">
-                {editingId ? "Edit Challan" : "Add Challan"}
-              </h3>
-              <button
-                onClick={() => {
-                  setOpen(false);
-                  resetForm();
-                }}
-                className="text-red-500 font-semibold"
-              >
-                X
-              </button>
-            </div>
-
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <input
-                type="text"
-                value={challanNo}
-                onChange={(e) => setChallanNo(e.target.value)}
-                placeholder="Challan No"
-                className="w-full border p-2 rounded"
-                required
-              />
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full border p-2 rounded"
-                required
-              />
-              <input
-                type="text"
-                value={source}
-                onChange={(e) => setSource(e.target.value)}
-                placeholder="Source"
-                className="w-full border p-2 rounded"
-                required
-              />
-              <input
-                type="text"
-                value={item}
-                onChange={(e) => setItem(e.target.value)}
-                placeholder="Item Name"
-                className="w-full border p-2 rounded"
-                required
-              />
-              <input
-                type="number"
-                value={qty}
-                onChange={(e) => setQty(e.target.value)}
-                placeholder="Quantity"
-                className="w-full border p-2 rounded"
-                required
-              />
-              <input
-                type="number"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                placeholder="Price"
-                className="w-full border p-2 rounded"
-                required
-              />
-              <select
-                value={payment}
-                onChange={(e) => setPayment(e.target.value)}
-                className="w-full border p-2 rounded"
-              >
-                <option value="Pending">Pending</option>
-                <option value="Paid">Paid</option>
-              </select>
-
-              <button
-                type="submit"
-                className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
-              >
-                {editingId ? "Update" : "Save"}
-              </button>
-            </form>
-          </div>
+      <div className="flex justify-between items-center">
+        <h3 className="text-xl font-bold mb-2">Challan Data</h3>
+        <div className="flex gap-2">
+          <Button onClick={() => setShowAddPopup(true)}>Add Customer</Button>
+          <Button onClick={() => setShowKacchePopup(true)}>Add Sell Challan</Button>
         </div>
+      </div>
+
+      {/* Add Customer Popup */}
+      {showAddPopup && (
+        <Card className="absolute left-[200px] p-4 mb-4 bg-gray-50 border border-gray-700">
+          <div className="grid grid-cols-2 gap-2">
+            {["category", "item", "condition", "cost", "multiplier", "workBy", "notes"].map(
+              (field) => (
+                <input
+                  key={field}
+                  placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
+                  value={newRow[field]}
+                  type={field === "cost" || field === "multiplier" ? "number" : "text"}
+                  onChange={(e) => setNewRow({ ...newRow, [field]: e.target.value })}
+                  className={`border p-1 ${field === "notes" ? "col-span-2" : ""}`}
+                />
+              )
+            )}
+          </div>
+          <div className="flex justify-end mt-2 gap-2">
+            <Button variant="destructive" onClick={() => setShowAddPopup(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddCustomer}>Add</Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Add Kacche-Challan Popup */}
+      {showKacchePopup && (
+        <Card className="absolute left-[200px] p-4 mb-4 bg-gray-50 border border-gray-700">
+          <h3 className="text-lg font-semibold mb-2">Kacche-Challan</h3>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { name: "customerName", label: "Customer Name" },
+              { name: "date", label: "Date", type: "date" },
+              { name: "payment", label: "Payment Mode" },
+              { name: "amountReceived", label: "Amount Received (₹)", type: "number" },
+              { name: "totalAmount", label: "Total Amount (₹)", type: "number" },
+              { name: "notes", label: "Notes" },
+            ].map((field) => (
+              <input
+                key={field.name}
+                type={field.type || "text"}
+                placeholder={field.label}
+                value={newChallan[field.name]}
+                onChange={(e) => setNewChallan({ ...newChallan, [field.name]: e.target.value })}
+                className={`border p-1 ${field.name === "notes" ? "col-span-2" : ""}`}
+              />
+            ))}
+          </div>
+          <div className="flex justify-end mt-3 gap-2">
+            <Button variant="destructive" onClick={() => setShowKacchePopup(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddKaccheChallan}>Save</Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Ledger Table */}
+      <Card>
+        <div className="overflow-x-auto">
+          <table className="min-w-full border border-gray-300 text-sm">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="border p-2">Category</th>
+                <th className="border p-2">Item</th>
+                <th className="border p-2">Condition</th>
+                <th className="border p-2 text-right">Cost (₹)</th>
+                <th className="border p-2 text-right">Multiplier</th>
+                <th className="border p-2 text-right">Total (₹)</th>
+                <th className="border p-2">Work By</th>
+                <th className="border p-2">Names</th>
+                <th className="border p-2 text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ledgerRows.length === 0 ? (
+                <tr>
+                  <td colSpan="9" className="text-center p-3 text-gray-500">
+                    No Ledger Data Found
+                  </td>
+                </tr>
+              ) : (
+                ledgerRows.map((row, index) => (
+                  <tr key={index} className="hover:bg-gray-50 cursor-pointer">
+                    <td className="border p-2">{row.category}</td>
+                    <td className="border p-2">{row.item}</td>
+                    <td className="border p-2">{row.condition || "OK"}</td>
+                    <td className="border p-2 text-right">{parseFloat(row.cost).toFixed(2)}</td>
+                    <td className="border p-2 text-right">{parseFloat(row.multiplier).toFixed(2)}</td>
+                    <td className="border p-2 text-right">{parseFloat(row.total).toFixed(2)}</td>
+                    <td className="border p-2">{row.workBy || "Labour"}</td>
+                    <td className="border p-2">{row.notes || ""}</td>
+                    <td className="border p-2 text-center">
+                      <button
+                        onClick={() => handleDelete(index)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-4 text-right font-semibold space-y-1">
+          <div>Subtotal (Estimate): ₹{subtotalEstimate.toFixed(2)}</div>
+          <div>Subtotal (Extra Work): ₹{subtotalExtra.toFixed(2)}</div>
+          <div>Subtotal (Added Customers): ₹{subtotalAdded.toFixed(2)}</div>
+          <div>Estimate Discount: ₹{discount.toFixed(2)}</div>
+          <div className="font-extrabold text-lg">Grand Total: ₹{grandTotal.toFixed(2)}</div>
+        </div>
+      </Card>
+
+      {/* Kacche-Challan List */}
+      {kaccheChallans.length > 0 && (
+        <Card>
+          <h3 className="text-lg font-bold mb-2">Kacche-Challan List</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border border-gray-300 text-sm">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="border p-2">Customer Name</th>
+                  <th className="border p-2">Date</th>
+                  <th className="border p-2">Payment</th>
+                  <th className="border p-2">Amount Received (₹)</th>
+                  <th className="border p-2">Total Amount (₹)</th>
+                  <th className="border p-2">Notes</th>
+                  <th className="border p-2 text-center">Delete</th>
+                </tr>
+              </thead>
+              <tbody>
+                {kaccheChallans.map((ch, i) => (
+                  <tr key={i} className="hover:bg-gray-50">
+                    <td className="border p-2">{ch.customerName}</td>
+                    <td className="border p-2">{ch.date}</td>
+                    <td className="border p-2">{ch.payment}</td>
+                    <td className="border p-2 text-right">{ch.amountReceived}</td>
+                    <td className="border p-2 text-right">{ch.totalAmount}</td>
+                    <td className="border p-2">{ch.notes}</td>
+                    <td className="border p-2 text-center">
+                      <button
+                        onClick={() => {
+                          const updated = kaccheChallans.filter((_, idx) => idx !== i);
+                          setKaccheChallans(updated);
+                          localStorage.setItem("kaccheChallans", JSON.stringify(updated));
+                        }}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {/* Kacche Challan Total Row */}
+                <tr className="font-bold bg-gray-100">
+                  <td colSpan="4" className="text-right border p-2">
+                    Total (Kacche-Challan):
+                  </td>
+                  <td className="border p-2 text-right">
+                    ₹{kaccheTotal.toFixed(2)}
+                  </td>
+                  <td colSpan="2"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {/* Saved Bills */}
+      {savedBills.length > 0 && (
+        <Card>
+          <h3 className="text-lg font-bold mb-2">Saved Bills / Payments</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border border-gray-300 text-sm">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="border p-2">Name</th>
+                  <th className="border p-2">Date</th>
+                  <th className="border p-2">Payment Mode</th>
+                  <th className="border p-2">Status</th>
+                  <th className="border p-2">Amount (₹)</th>
+                  <th className="border p-2">Category</th>
+                  <th className="border p-2">Item</th>
+                  <th className="border p-2 text-center">Delete</th>
+                </tr>
+              </thead>
+              <tbody>
+                {savedBills.map((bill, i) => (
+                  <tr key={i} className="hover:bg-gray-50">
+                    <td className="border p-2">{bill.customerName}</td>
+                    <td className="border p-2">{bill.date}</td>
+                    <td className="border p-2">{bill.paymentMode}</td>
+                    <td className="border p-2">{bill.paymentStatus}</td>
+                    <td className="border p-2 text-right">
+                      {parseFloat(bill.amountReceived || bill.totalAmount).toFixed(2)}
+                    </td>
+                    <td className="border p-2">{bill.category}</td>
+                    <td className="border p-2">{bill.item}</td>
+                    <td className="border p-2 text-center">
+                      <button
+                        onClick={() => {
+                          const updatedBills = savedBills.filter((_, index) => index !== i);
+                          setSavedBills(updatedBills);
+                          localStorage.setItem("customerBills", JSON.stringify(updatedBills));
+                        }}
+                        className="text-red-600 hover:text-red-800 font-semibold"
+                      >
+                        <Trash2 />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
     </div>
   );
 };
 
 export default SellChallan;
-
-
-
-// import React from "react";
-// import { useState } from "react";
-
-// const Challan = () => {
-//   const [isopen ,setisopen] = useState(false)
-//   const [formData, setfromData] = useState({
-//   id: "",
-//   challanNo: "",
-//   date: "",
-//   source: "",
-//   item: "",
-//   qty: "",
-//   price: "",
-//   total: "",
-//   payment: ""
-//   })
-
-
-
-
-//   return (
-
-//     <div className="p-6">
-//       <div className="flex justify-between">
-//       <h1 className="font-bold text-2xl mb-4">Challan Details</h1>
-//       <button onClick={()=>setisopen(true)} className="font-semibold text-xl mb-4 bg-blue-400 text-white rounded-xl px-2 ">Add List</button>
-//       </div>
-
-// <table>
-//   <thead>
-//     <tr>
-//       <th>ID</th>
-//       <th>Challan No</th>
-//       <th>Date</th>
-//       <th>Source</th>
-//       <th>Item</th>
-//       <th>Qty</th>
-//       <th>Price</th>
-//       <th>Total</th>
-//       <th>Payment</th>
-//     </tr>
-//   </thead>
-//   <tbody>
-//     {challanList.map((row, index) => (
-//       <tr key={index}>
-//         <td>{row.id}</td>
-//         <td>{row.challanNo}</td>
-//         <td>{row.date}</td>
-//         <td>{row.source}</td>
-//         <td>{row.item}</td>
-//         <td>{row.qty}</td>
-//         <td>{row.price}</td>
-//         <td>{row.total}</td>
-//         <td>{row.payment}</td>
-//       </tr>
-//     ))}
-//   </tbody>
-// </table>
-
-
-
-
-// {(isopen &&
-//  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-//           <div className="pt-[80px]">
-//       <form className="grid grid-cols-2 gap-4 bg-white shadow-md rounded-lg p-6">
-        
-//         {/* ID */}
-//         <div>
-//           <label className="block mb-1 font-medium">ID</label>
-//           <input type="text" className="border p-2 w-full rounded-md" placeholder="Enter ID" />
-//         </div>
-
-//         {/* Challan No */}
-//         <div>
-//           <label className="block mb-1 font-medium">Challan No</label>
-//           <input type="text" className="border p-2 w-full rounded-md" placeholder="Enter Challan No" />
-//         </div>
-
-//         {/* Date */}
-//         <div>
-//           <label className="block mb-1 font-medium">Date</label>
-//           <input type="date" className="border p-2 w-full rounded-md" />
-//         </div>
-
-//         {/* Source */}
-//         <div>
-//           <label className="block mb-1 font-medium">Source</label>
-//           <input type="text" className="border p-2 w-full rounded-md" placeholder="Enter Source" />
-//         </div>
-
-//         {/* Item */}
-//         <div>
-//           <label className="block mb-1 font-medium">Item</label>
-//           <input type="text" className="border p-2 w-full rounded-md" placeholder="Enter Item" />
-//         </div>
-
-//         {/* Quantity */}
-//         <div>
-//           <label className="block mb-1 font-medium">Qty</label>
-//           <input type="number" className="border p-2 w-full rounded-md" placeholder="Enter Quantity" />
-//         </div>
-
-//         {/* Price */}
-//         <div>
-//           <label className="block mb-1 font-medium">Price</label>
-//           <input type="number" className="border p-2 w-full rounded-md" placeholder="Enter Price" />
-//         </div>
-
-//         {/* Total */}
-//         <div>
-//           <label className="block mb-1 font-medium">Total</label>
-//           <input type="number" className="border p-2 w-full rounded-md" placeholder="Auto or Enter Total" />
-//         </div>
-
-//         {/* Payment */}
-//         <div className="col-span-2">
-//           <label className="block mb-1 font-medium">Payment Status</label>
-//           <select className="border p-2 w-full rounded-md">
-//             <option>Paid</option>
-//             <option>Unpaid</option>
-//             <option>Partial</option>
-//           </select>
-//         </div>
-
-//         {/* Submit */}
-//         <div className="col-span-2 text-center ">
-//           <button type="submit" className="bg-blue-500 text-white px-6 py-2 rounded-md">
-//             Submit Challan
-//           </button>
-//         </div>
-//   <button onClick={()=>setisopen(false)} className="bg-blue-300 mt-[10px] rounded-xl px-2 font-semibold">Close</button>
-//       </form>
-//          </div>
-//      </div>
-
-//     )}
-    
-//     </div>
- 
-//   );
-// };
-             
-// export default Challan;

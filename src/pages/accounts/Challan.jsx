@@ -1,11 +1,33 @@
+
+
+
+
 import React, { useState, useEffect } from "react";
 import { PlusCircle, Edit, Trash } from "lucide-react";
 
 const Challan = () => {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [categories, setCategories] = useState([]);
 
-  // LocalStorage se data load karna
+  // 🔹 Load Categories from localStorage (CategoryManager.js se)
+  useEffect(() => {
+    const saved = localStorage.getItem("categories");
+    if (saved) setCategories(JSON.parse(saved));
+
+    // Event listener for category updates
+    const handleUpdate = () => {
+      const updated = localStorage.getItem("categories");
+      if (updated) setCategories(JSON.parse(updated));
+    };
+    window.addEventListener("categoriesUpdated", handleUpdate);
+
+    return () => {
+      window.removeEventListener("categoriesUpdated", handleUpdate);
+    };
+  }, []);
+
+  // 🔹 Load Challans from localStorage
   const [challans, setChallans] = useState(() => {
     const saved = localStorage.getItem("challans");
     return saved
@@ -25,12 +47,12 @@ const Challan = () => {
         ];
   });
 
-  // Save to localStorage
+  // 🔹 Save Challans to localStorage
   useEffect(() => {
     localStorage.setItem("challans", JSON.stringify(challans));
   }, [challans]);
 
-  // Form state
+  // Form States
   const [challanNo, setChallanNo] = useState("");
   const [date, setDate] = useState("");
   const [source, setSource] = useState("");
@@ -39,7 +61,7 @@ const Challan = () => {
   const [price, setPrice] = useState("");
   const [payment, setPayment] = useState("Pending");
 
-  // Reset form
+  // 🔹 Reset Form
   const resetForm = () => {
     setChallanNo("");
     setDate("");
@@ -51,7 +73,7 @@ const Challan = () => {
     setEditingId(null);
   };
 
-  // Form submit
+  // 🔹 Submit Form
   const handleSubmit = (e) => {
     e.preventDefault();
     const total = Number(qty) * Number(price);
@@ -92,7 +114,7 @@ const Challan = () => {
     setOpen(false);
   };
 
-  // Edit
+  // 🔹 Edit Challan
   const handleEdit = (c) => {
     setEditingId(c.id);
     setChallanNo(c.challanNo);
@@ -105,7 +127,7 @@ const Challan = () => {
     setOpen(true);
   };
 
-  // Delete
+  // 🔹 Delete Challan
   const handleDelete = (id) => {
     const filtered = challans.filter((c) => c.id !== id);
     setChallans(filtered);
@@ -115,12 +137,12 @@ const Challan = () => {
     <div className="p-6">
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Challan Records</h2>
+        <h2 className="text-xl font-semibold">Purchase Challan</h2>
         <button
           onClick={() => setOpen(true)}
-          className="bg-blue-600 text-white flex px-6 py-2 gap-2 font-bold rounded hover:bg-blue-700"
+          className="bg-red-600 text-white flex px-6 py-2 gap-2 font-bold rounded hover:bg-red-700"
         >
-          <PlusCircle /> Add Challan
+          <PlusCircle /> Add  Purchase-Challan
         </button>
       </div>
 
@@ -133,7 +155,7 @@ const Challan = () => {
               <th className="p-2 border">Challan No</th>
               <th className="p-2 border">Date</th>
               <th className="p-2 border">Source</th>
-              <th className="p-2 border">Item</th>
+              <th className="p-2 border">Item (Category)</th>
               <th className="p-2 border">Qty</th>
               <th className="p-2 border">Price</th>
               <th className="p-2 border">Total</th>
@@ -213,15 +235,23 @@ const Challan = () => {
                 placeholder="Source"
                 className="w-full border p-2 rounded"
                 required
-              />
+              /> 
+
+              {/* 🔹 Item dropdown linked with categories */}
               <input
-                type="text"
+                list="categoryList"
                 value={item}
                 onChange={(e) => setItem(e.target.value)}
-                placeholder="Item Name"
+                placeholder="Select Categories from Categories List"
                 className="w-full border p-2 rounded"
                 required
               />
+              <datalist id="categoryList">
+                {categories.map((cat, i) => (
+                  <option key={i} value={cat.name} />
+                ))}
+              </datalist>
+
               <input
                 type="number"
                 value={qty}
@@ -262,149 +292,3 @@ const Challan = () => {
 };
 
 export default Challan;
-
-
-// import React from "react";
-// import { useState } from "react";
-
-// const Challan = () => {
-//   const [isopen ,setisopen] = useState(false)
-//   const [formData, setfromData] = useState({
-//   id: "",
-//   challanNo: "",
-//   date: "",
-//   source: "",
-//   item: "",
-//   qty: "",
-//   price: "",
-//   total: "",
-//   payment: ""
-//   })
-
-
-
-
-//   return (
-
-//     <div className="p-6">
-//       <div className="flex justify-between">
-//       <h1 className="font-bold text-2xl mb-4">Challan Details</h1>
-//       <button onClick={()=>setisopen(true)} className="font-semibold text-xl mb-4 bg-blue-400 text-white rounded-xl px-2 ">Add List</button>
-//       </div>
-
-// <table>
-//   <thead>
-//     <tr>
-//       <th>ID</th>
-//       <th>Challan No</th>
-//       <th>Date</th>
-//       <th>Source</th>
-//       <th>Item</th>
-//       <th>Qty</th>
-//       <th>Price</th>
-//       <th>Total</th>
-//       <th>Payment</th>
-//     </tr>
-//   </thead>
-//   <tbody>
-//     {challanList.map((row, index) => (
-//       <tr key={index}>
-//         <td>{row.id}</td>
-//         <td>{row.challanNo}</td>
-//         <td>{row.date}</td>
-//         <td>{row.source}</td>
-//         <td>{row.item}</td>
-//         <td>{row.qty}</td>
-//         <td>{row.price}</td>
-//         <td>{row.total}</td>
-//         <td>{row.payment}</td>
-//       </tr>
-//     ))}
-//   </tbody>
-// </table>
-
-
-
-
-// {(isopen &&
-//  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-//           <div className="pt-[80px]">
-//       <form className="grid grid-cols-2 gap-4 bg-white shadow-md rounded-lg p-6">
-        
-//         {/* ID */}
-//         <div>
-//           <label className="block mb-1 font-medium">ID</label>
-//           <input type="text" className="border p-2 w-full rounded-md" placeholder="Enter ID" />
-//         </div>
-
-//         {/* Challan No */}
-//         <div>
-//           <label className="block mb-1 font-medium">Challan No</label>
-//           <input type="text" className="border p-2 w-full rounded-md" placeholder="Enter Challan No" />
-//         </div>
-
-//         {/* Date */}
-//         <div>
-//           <label className="block mb-1 font-medium">Date</label>
-//           <input type="date" className="border p-2 w-full rounded-md" />
-//         </div>
-
-//         {/* Source */}
-//         <div>
-//           <label className="block mb-1 font-medium">Source</label>
-//           <input type="text" className="border p-2 w-full rounded-md" placeholder="Enter Source" />
-//         </div>
-
-//         {/* Item */}
-//         <div>
-//           <label className="block mb-1 font-medium">Item</label>
-//           <input type="text" className="border p-2 w-full rounded-md" placeholder="Enter Item" />
-//         </div>
-
-//         {/* Quantity */}
-//         <div>
-//           <label className="block mb-1 font-medium">Qty</label>
-//           <input type="number" className="border p-2 w-full rounded-md" placeholder="Enter Quantity" />
-//         </div>
-
-//         {/* Price */}
-//         <div>
-//           <label className="block mb-1 font-medium">Price</label>
-//           <input type="number" className="border p-2 w-full rounded-md" placeholder="Enter Price" />
-//         </div>
-
-//         {/* Total */}
-//         <div>
-//           <label className="block mb-1 font-medium">Total</label>
-//           <input type="number" className="border p-2 w-full rounded-md" placeholder="Auto or Enter Total" />
-//         </div>
-
-//         {/* Payment */}
-//         <div className="col-span-2">
-//           <label className="block mb-1 font-medium">Payment Status</label>
-//           <select className="border p-2 w-full rounded-md">
-//             <option>Paid</option>
-//             <option>Unpaid</option>
-//             <option>Partial</option>
-//           </select>
-//         </div>
-
-//         {/* Submit */}
-//         <div className="col-span-2 text-center ">
-//           <button type="submit" className="bg-blue-500 text-white px-6 py-2 rounded-md">
-//             Submit Challan
-//           </button>
-//         </div>
-//   <button onClick={()=>setisopen(false)} className="bg-blue-300 mt-[10px] rounded-xl px-2 font-semibold">Close</button>
-//       </form>
-//          </div>
-//      </div>
-
-//     )}
-    
-//     </div>
- 
-//   );
-// };
-             
-// export default Challan;

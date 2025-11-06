@@ -1,4 +1,6 @@
 
+
+// final code and completed
 import React, { useState, useEffect } from "react";
 import { PlusCircle, Edit, Trash } from "lucide-react";
 
@@ -22,7 +24,7 @@ const Purchase = () => {
             category: "Raw Material",
             source: "Local Market",
             vehicleNo: "MP09-AB-1234",
-            date: new Date().toISOString().split("T")[0], // default today
+            date: new Date().toISOString().split("T")[0],
           },
         ];
   });
@@ -40,10 +42,8 @@ const Purchase = () => {
   const [payment, setPayment] = useState("Pending");
   const [category, setCategory] = useState("");
   const [source, setSource] = useState("");
-   const [vehicleNo,setvehicleNo ] = useState("");
+  const [vehicleNo, setVehicleNo] = useState("");
   const [date, setDate] = useState("");
-
-
 
   // Reset form
   const resetForm = () => {
@@ -54,11 +54,27 @@ const Purchase = () => {
     setPayment("Pending");
     setCategory("");
     setSource("");
-    vehicleNo("");
+    setVehicleNo("");
     setDate("");
-    setEditingId(null); 
+    setEditingId(null);
+  };
 
+  // Stock Movements me data save karne ka function
+  const saveToStockMovements = (material) => {
+    const stockData = JSON.parse(localStorage.getItem("stockMovements")) || [];
+    const newStockRow = {
+      date: material.date || new Date().toISOString().split("T")[0],
+      type: "In",
+      item: material.name,
+      linkedTo: material.category || "",
+      qty: Number(material.qty) || 0,
+      cost: Number(material.price) || 0,
+      total: (Number(material.qty) || 0) * (Number(material.price) || 0),
+      referral: "Purchase Invoice",
+    };
 
+    const updatedStock = [...stockData, newStockRow];
+    localStorage.setItem("stockMovements", JSON.stringify(updatedStock));
   };
 
   // Form submit
@@ -70,7 +86,7 @@ const Purchase = () => {
       const updated = materials.map((m) =>
         m.id === editingId
           ? {
-              id: editingId,
+              ...m,
               name,
               qty: Number(qty),
               price: Number(price),
@@ -84,6 +100,9 @@ const Purchase = () => {
           : m
       );
       setMaterials(updated);
+
+      const editedMaterial = updated.find((m) => m.id === editingId);
+      saveToStockMovements(editedMaterial);
     } else {
       // Add mode
       const newMaterial = {
@@ -99,6 +118,7 @@ const Purchase = () => {
         date,
       };
       setMaterials([...materials, newMaterial]);
+      saveToStockMovements(newMaterial);
     }
 
     resetForm();
@@ -115,7 +135,7 @@ const Purchase = () => {
     setPayment(m.payment);
     setCategory(m.category);
     setSource(m.source);
-    setvehicleNo(m.vehicleNo);
+    setVehicleNo(m.vehicleNo);
     setDate(m.date);
     setOpen(true);
   };
@@ -169,7 +189,7 @@ const Purchase = () => {
                 <td className="p-2 border">{m.payment}</td>
                 <td className="p-2 border">{m.category}</td>
                 <td className="p-2 border">{m.source}</td>
-                 <td className="p-2 border">{m.vehicleNo}</td>
+                <td className="p-2 border">{m.vehicleNo}</td>
                 <td className="p-2 border">{m.date}</td>
                 <td className="p-2 border">
                   <button onClick={() => handleEdit(m)}>
@@ -206,7 +226,6 @@ const Purchase = () => {
               </button>
             </div>
 
-            {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-3">
               <input
                 type="text"
@@ -247,6 +266,7 @@ const Purchase = () => {
                 <option value="Pending">Pending</option>
                 <option value="Paid">Paid</option>
               </select>
+
               <input
                 type="text"
                 value={category}
@@ -254,6 +274,7 @@ const Purchase = () => {
                 placeholder="Category"
                 className="w-full border p-2 rounded"
               />
+
               <input
                 type="text"
                 value={source}
@@ -261,10 +282,10 @@ const Purchase = () => {
                 placeholder="Source of Material"
                 className="w-full border p-2 rounded"
               />
-               <input
+              <input
                 type="text"
                 value={vehicleNo}
-                onChange={(e) => setvehicleNo(e.target.value)}
+                onChange={(e) => setVehicleNo(e.target.value)}
                 placeholder="vehicleNo"
                 className="w-full border p-2 rounded"
               />
@@ -291,5 +312,3 @@ const Purchase = () => {
 };
 
 export default Purchase;
-
-

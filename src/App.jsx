@@ -14,7 +14,7 @@ import Summary from '@/pages/Summary';
 import Settings from '@/pages/Settings';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import useAuthStore from './store/authStore';
-
+import CashRecipt from "./pages/CashRecipt"
 function App() {
   const { isAuthenticated } = useAuthStore();
   return (
@@ -39,6 +39,8 @@ function App() {
           <Route path="inventory" element={<Inventory />} />
           <Route path="accounts" element={<Accounts />} />
           <Route path="summary" element={<Summary />} />
+           <Route path="CashRecipt" element={<CashRecipt/>} />
+
           <Route path="settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
