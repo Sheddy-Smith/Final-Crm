@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { Toaster } from 'sonner';
 import Login from '@/pages/Login';
 import Layout from '@/components/Layout';
@@ -13,13 +14,41 @@ import Accounts from '@/pages/Accounts';
 import Summary from '@/pages/Summary';
 import Settings from '@/pages/Settings';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import OfflineIndicator from '@/components/OfflineIndicator';
 import useAuthStore from './store/authStore';
-import CashRecipt from "./pages/CashRecipt"
+import CashRecipt from "./pages/CashRecipt";
+import { syncManager } from '@/utils/syncManager';
+import { indexedDB } from '@/utils/indexedDB';
+
 function App() {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
+
+  useEffect(() => {
+    const initOfflineSupport = async () => {
+      try {
+        await indexedDB.init();
+        console.log('✅ IndexedDB initialized');
+
+        if (isAuthenticated && user?.id) {
+          await syncManager.syncFromSupabase(user.id);
+          syncManager.startAutoSync(30000);
+        }
+      } catch (error) {
+        console.error('Failed to initialize offline support:', error);
+      }
+    };
+
+    initOfflineSupport();
+
+    return () => {
+      syncManager.stopAutoSync();
+    };
+  }, [isAuthenticated, user]);
+
   return (
     <>
       <Toaster position="top-right" richColors closeButton />
+      <OfflineIndicator />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route
