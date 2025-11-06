@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import useMultiplierStore from '@/store/multiplierStore';
-import { Calculator, Users, Truck, Tag, Plus, Trash2, Save, RotateCcw, Download, Upload } from 'lucide-react';
+import useInventoryStore from '@/store/inventoryStore';
+import { Calculator, Users, Truck, Tag, Save, RotateCcw, Download, Upload, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
 const MultiplierSettingsTab = () => {
@@ -13,17 +14,24 @@ const MultiplierSettingsTab = () => {
     setLabourMultiplier,
     setVendorMultiplier,
     setCategoryMultiplier,
-    removeCategoryMultiplier,
     resetMultipliers,
     exportMultipliers,
     importMultipliers,
   } = useMultiplierStore();
 
+  const { categories } = useInventoryStore();
+
   const [labourValue, setLabourValue] = useState(labourMultiplier);
   const [vendorValue, setVendorValue] = useState(vendorMultiplier);
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [newCategoryMultiplier, setNewCategoryMultiplier] = useState(1);
-  const [editingCategories, setEditingCategories] = useState({});
+  const [categoryValues, setCategoryValues] = useState({});
+
+  useEffect(() => {
+    const initialValues = {};
+    categories.forEach(cat => {
+      initialValues[cat.name] = categoryMultipliers[cat.name] || 1;
+    });
+    setCategoryValues(initialValues);
+  }, [categories, categoryMultipliers]);
 
   const handleSaveLabour = () => {
     setLabourMultiplier(labourValue);
@@ -35,32 +43,19 @@ const MultiplierSettingsTab = () => {
     toast.success('Vendor multiplier saved!');
   };
 
-  const handleAddCategory = () => {
-    if (!newCategoryName.trim()) {
-      toast.error('Please enter a category name');
-      return;
-    }
-    if (categoryMultipliers[newCategoryName]) {
-      toast.error('Category already exists');
-      return;
-    }
-    setCategoryMultiplier(newCategoryName, newCategoryMultiplier);
-    setNewCategoryName('');
-    setNewCategoryMultiplier(1);
-    toast.success(`Category "${newCategoryName}" added!`);
-  };
-
   const handleUpdateCategory = (categoryName, value) => {
-    setCategoryMultiplier(categoryName, value);
-    setEditingCategories({ ...editingCategories, [categoryName]: false });
+    const numValue = parseFloat(value) || 1;
+    setCategoryMultiplier(categoryName, numValue);
+    setCategoryValues({ ...categoryValues, [categoryName]: numValue });
     toast.success(`Category "${categoryName}" updated!`);
   };
 
-  const handleDeleteCategory = (categoryName) => {
-    if (window.confirm(`Are you sure you want to delete multiplier for "${categoryName}"?`)) {
-      removeCategoryMultiplier(categoryName);
-      toast.success(`Category "${categoryName}" removed!`);
-    }
+  const handleSaveAllCategories = () => {
+    categories.forEach(cat => {
+      const value = categoryValues[cat.name] || 1;
+      setCategoryMultiplier(cat.name, value);
+    });
+    toast.success('All category multipliers saved!');
   };
 
   const handleReset = () => {
@@ -68,7 +63,11 @@ const MultiplierSettingsTab = () => {
       resetMultipliers();
       setLabourValue(1);
       setVendorValue(1);
-      setEditingCategories({});
+      const resetValues = {};
+      categories.forEach(cat => {
+        resetValues[cat.name] = 1;
+      });
+      setCategoryValues(resetValues);
       toast.success('All multipliers reset to default!');
     }
   };
@@ -93,6 +92,11 @@ const MultiplierSettingsTab = () => {
         if (success) {
           setLabourValue(labourMultiplier);
           setVendorValue(vendorMultiplier);
+          const updatedValues = {};
+          categories.forEach(cat => {
+            updatedValues[cat.name] = categoryMultipliers[cat.name] || 1;
+          });
+          setCategoryValues(updatedValues);
           toast.success('Multipliers imported successfully!');
         } else {
           toast.error('Failed to import multipliers. Invalid file format.');
@@ -110,7 +114,7 @@ const MultiplierSettingsTab = () => {
           <div>
             <h2 className="text-2xl font-bold">Multiplier Settings</h2>
             <p className="text-sm text-gray-600 dark:text-gray-300">
-              Set default multipliers for labour, vendors, and categories. These will apply throughout the entire project.
+              Set default multipliers for labour, vendors, and inventory categories. These will apply throughout the entire project.
             </p>
           </div>
         </div>
@@ -196,99 +200,81 @@ const MultiplierSettingsTab = () => {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <Tag className="text-purple-600" size={24} />
-            <h3 className="text-xl font-bold">Category-wise Multipliers</h3>
+            <h3 className="text-xl font-bold">Inventory Category Multipliers</h3>
           </div>
+          <Button onClick={handleSaveAllCategories} className="bg-purple-600 hover:bg-purple-700">
+            <Save size={18} /> Save All Categories
+          </Button>
         </div>
 
-        <div className="mb-6 p-4 bg-purple-50 dark:bg-purple-900 rounded-lg">
-          <h4 className="font-semibold mb-3 flex items-center gap-2">
-            <Plus size={18} />
-            Add New Category Multiplier
-          </h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <input
-              type="text"
-              value={newCategoryName}
-              onChange={(e) => setNewCategoryName(e.target.value)}
-              placeholder="Category Name (e.g., Body Work, Painting)"
-              className="p-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700"
-            />
-            <input
-              type="number"
-              step="0.1"
-              min="0"
-              value={newCategoryMultiplier}
-              onChange={(e) => setNewCategoryMultiplier(e.target.value)}
-              placeholder="Multiplier"
-              className="p-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700"
-            />
-            <Button onClick={handleAddCategory} className="bg-purple-600 hover:bg-purple-700">
-              <Plus size={18} /> Add Category
-            </Button>
-          </div>
+        <div className="mb-4 p-3 bg-purple-50 dark:bg-purple-900 rounded-lg">
+          <p className="text-sm">
+            <RefreshCw size={14} className="inline mr-1" />
+            Categories are automatically synced from <strong>Inventory Settings</strong>.
+            Add or manage categories in Settings → Inventory & Stock.
+          </p>
         </div>
 
         <div className="space-y-3">
-          {Object.keys(categoryMultipliers).length === 0 ? (
+          {categories.length === 0 ? (
             <div className="text-center py-12 text-gray-500 dark:text-gray-400">
               <Tag size={48} className="mx-auto mb-3 opacity-50" />
-              <p className="text-lg font-medium">No category multipliers set</p>
-              <p className="text-sm">Add categories above to set specific multipliers</p>
+              <p className="text-lg font-medium">No inventory categories found</p>
+              <p className="text-sm">Add categories in Inventory Settings to set multipliers</p>
             </div>
           ) : (
-            Object.entries(categoryMultipliers).map(([categoryName, multiplierValue]) => (
+            categories.map((category) => (
               <div
-                key={categoryName}
-                className="flex items-center gap-3 p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                key={category.id}
+                className="flex items-center gap-4 p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 <Tag className="text-purple-600" size={20} />
                 <div className="flex-1">
-                  <p className="font-medium">{categoryName}</p>
+                  <p className="font-medium text-lg">{category.name}</p>
                   <p className="text-sm text-gray-500">
-                    Multiplier: <span className="font-bold text-purple-600">{multiplierValue}x</span>
+                    Current multiplier: <span className="font-bold text-purple-600">{categoryMultipliers[category.name] || 1}x</span>
                   </p>
                 </div>
 
-                {editingCategories[categoryName] ? (
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      defaultValue={multiplierValue}
-                      className="w-24 p-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          handleUpdateCategory(categoryName, e.target.value);
-                        }
-                      }}
-                      onBlur={(e) => handleUpdateCategory(categoryName, e.target.value)}
-                      autoFocus
-                    />
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setEditingCategories({ ...editingCategories, [categoryName]: true })}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDeleteCategory(categoryName)}
-                      className="text-red-600 border-red-300 hover:bg-red-50"
-                    >
-                      <Trash2 size={16} />
-                    </Button>
-                  </div>
-                )}
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={categoryValues[category.name] || 1}
+                    onChange={(e) => {
+                      setCategoryValues({ ...categoryValues, [category.name]: e.target.value });
+                    }}
+                    onBlur={(e) => handleUpdateCategory(category.name, e.target.value)}
+                    className="w-32 p-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700 text-center font-semibold"
+                    placeholder="1.0"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => handleUpdateCategory(category.name, categoryValues[category.name])}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    <Save size={16} />
+                  </Button>
+                </div>
               </div>
             ))
           )}
         </div>
+
+        {categories.length > 0 && (
+          <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <h4 className="font-semibold mb-3">Summary</h4>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {categories.map(cat => (
+                <div key={cat.id} className="text-sm">
+                  <span className="text-gray-600 dark:text-gray-400">{cat.name}:</span>
+                  <span className="ml-2 font-bold text-purple-600">{categoryMultipliers[cat.name] || 1}x</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </Card>
 
       <Card className="p-6 bg-yellow-50 dark:bg-yellow-900">
@@ -296,9 +282,10 @@ const MultiplierSettingsTab = () => {
         <ul className="space-y-2 text-sm text-yellow-700 dark:text-yellow-300">
           <li>• <strong>Labour Multiplier:</strong> Applied to all items where "Work By" is set to "Labour"</li>
           <li>• <strong>Vendor Multiplier:</strong> Applied to all items where "Work By" is set to "Vendor"</li>
-          <li>• <strong>Category Multipliers:</strong> Applied based on the category of the item (overrides labour/vendor)</li>
+          <li>• <strong>Category Multipliers:</strong> Applied based on the inventory category of the item (overrides labour/vendor)</li>
           <li>• <strong>Formula:</strong> Final Cost = Base Cost × Quantity × Multiplier</li>
           <li>• <strong>Global Effect:</strong> These multipliers apply to estimates, challans, and invoices across the entire project</li>
+          <li>• <strong>Auto-Sync:</strong> Categories are automatically fetched from your inventory settings</li>
         </ul>
       </Card>
 
