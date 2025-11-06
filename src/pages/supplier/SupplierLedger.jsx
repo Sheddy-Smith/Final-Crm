@@ -1,22 +1,56 @@
 // completed but Edi is not response
 import React, { useState, useEffect } from "react";
 import { Edit, Trash } from "lucide-react";
+import SearchBar from "@/components/common/SearchBar";
 
 const SupplierLedger = () => {
   const [supplierData, setSupplierData] = useState([]);
   const [challanData, setChallanData] = useState([]);
+  const [filteredSupplierData, setFilteredSupplierData] = useState([]);
+  const [filteredChallanData, setFilteredChallanData] = useState([]);
+
+  const handleSearch = (term) => {
+    if (!term.trim()) {
+      setFilteredSupplierData(supplierData);
+      setFilteredChallanData(challanData);
+      return;
+    }
+    const lowerTerm = term.toLowerCase();
+
+    const filteredSuppliers = supplierData.filter(v =>
+      v.party?.toLowerCase().includes(lowerTerm) ||
+      v.type?.toLowerCase().includes(lowerTerm) ||
+      v.method?.toLowerCase().includes(lowerTerm) ||
+      v.date?.includes(term)
+    );
+
+    const filteredChallans = challanData.filter(c =>
+      c.party?.toLowerCase().includes(lowerTerm) ||
+      c.date?.includes(term)
+    );
+
+    setFilteredSupplierData(filteredSuppliers);
+    setFilteredChallanData(filteredChallans);
+  };
+
+  const handleReset = () => {
+    setFilteredSupplierData(supplierData);
+    setFilteredChallanData(challanData);
+  };
 
   // load supplier vouchers from localStorage
   useEffect(() => {
     const vouchers = JSON.parse(localStorage.getItem("vouchers")) || [];
     const supplierVouchers = vouchers.filter((v) => v.type === "Supplier");
     setSupplierData(supplierVouchers);
+    setFilteredSupplierData(supplierVouchers);
   }, []);
 
   // load challans (purchase-challan) from localStorage
   useEffect(() => {
     const challans = JSON.parse(localStorage.getItem("challans")) || [];
     setChallanData(challans);
+    setFilteredChallanData(challans);
   }, []);
 
   // delete voucher by id and update localStorage + state
@@ -46,6 +80,7 @@ const SupplierLedger = () => {
     <div className="p-6 space-y-6">
       <div>
         <h2 className="text-xl font-bold mb-4">Supplier Ledger</h2>
+        <SearchBar onSearch={handleSearch} onReset={handleReset} searchFields={['party', 'date', 'type', 'method']} />
 
         <div className="overflow-x-auto">
           <table className="min-w-full border">
@@ -61,7 +96,7 @@ const SupplierLedger = () => {
               </tr>
             </thead>
             <tbody>
-              {supplierData.map((v) => (
+              {filteredSupplierData.map((v) => (
                 <tr key={v.id} className="text-center">
                   <td className="border p-2">{v.type}</td>
                   <td className="border p-2">{v.party}</td>
@@ -83,7 +118,7 @@ const SupplierLedger = () => {
                 </tr>
               ))}
 
-              {supplierData.length === 0 && (
+              {filteredSupplierData.length === 0 && (
                 <tr>
                   <td colSpan="7" className="text-gray-500 p-4">
                     No Supplier vouchers found.
@@ -124,7 +159,7 @@ const SupplierLedger = () => {
               </tr>
             </thead>
             <tbody>
-              {challanData.map((c) => (
+              {filteredChallanData.map((c) => (
                 <tr key={c.id} className="text-center hover:bg-gray-50">
                   <td className="border p-2">{c.id}</td>
                   <td className="border p-2">{c.challanNo}</td>
@@ -150,7 +185,7 @@ const SupplierLedger = () => {
                   </td>
                 </tr>))}
 
-              {challanData.length === 0 && (
+              {filteredChallanData.length === 0 && (
                 <tr>
                   <td colSpan="11" className="text-gray-500 p-4">
                     No Purchase-Challan data found.
