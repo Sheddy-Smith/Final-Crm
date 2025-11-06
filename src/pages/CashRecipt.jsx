@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Card from "../components/ui/Card";
 import {  Trash2 } from "lucide-react";
+import SearchBar from "../components/common/SearchBar";
 
 const CashRecipt = () => {
   const [open, setOpen] = useState(false);
@@ -15,6 +16,11 @@ const CashRecipt = () => {
   const [amount, setAmount] = useState("");
   const [status, setStatus] = useState("Not Deposited");
   const [date, setDate] = useState("");
+  const [filteredReceipts, setFilteredReceipts] = useState([]);
+
+  useEffect(() => {
+    setFilteredReceipts(receipts);
+  }, [receipts]);
 
   // Total calculation
   const total = receipts.reduce((sum, r) => sum + Number(r.amount || 0), 0);
@@ -55,6 +61,22 @@ const CashRecipt = () => {
     setReceipts(filtered);
   };
 
+  const handleSearch = (searchTerm) => {
+    const term = searchTerm.toLowerCase();
+    const filtered = receipts.filter(
+      (r) =>
+        r.name.toLowerCase().includes(term) ||
+        r.purpose.toLowerCase().includes(term) ||
+        r.paymentType.toLowerCase().includes(term) ||
+        r.status.toLowerCase().includes(term)
+    );
+    setFilteredReceipts(filtered);
+  };
+
+  const handleReset = () => {
+    setFilteredReceipts(receipts);
+  };
+
   return (
     <Card className="p-6">
       <div className="flex justify-between items-center mb-4">
@@ -66,6 +88,13 @@ const CashRecipt = () => {
           + Add Receipt
         </button>
       </div>
+
+      {/* Search Bar */}
+      <SearchBar
+        onSearch={handleSearch}
+        onReset={handleReset}
+        searchFields={['name', 'purpose', 'payment type', 'status']}
+      />
 
       {/* Table */}
       <div className="overflow-x-auto border rounded-lg">
@@ -82,7 +111,7 @@ const CashRecipt = () => {
             </tr>
           </thead>
           <tbody>
-            {receipts.map((r) => (
+            {filteredReceipts.map((r) => (
               <tr key={r.id} className="text-center hover:bg-gray-50">
                 <td className="border p-2">{r.name}</td>
                 <td className="border p-2">{r.purpose}</td>
@@ -107,7 +136,7 @@ const CashRecipt = () => {
               </tr>
             ))}
 
-            {receipts.length === 0 && (
+            {filteredReceipts.length === 0 && (
               <tr>
                 <td colSpan="7" className="text-gray-500 p-4">
                   No receipts available.
@@ -115,7 +144,7 @@ const CashRecipt = () => {
               </tr>
             )}
 
-            {receipts.length > 0 && (
+            {filteredReceipts.length > 0 && (
               <tr className="bg-gray-200 font-semibold text-center">
                 <td colSpan="3" className="border p-2 text-right">
                   Total:

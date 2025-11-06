@@ -1,7 +1,7 @@
-// // Invoice.jsx
 import { Edit,  Trash2Icon ,Trash2, Save } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import Card  from "../../components/ui/Card";
+import SearchBar from "../../components/common/SearchBar";
 const INVOICES_KEY = "malwa_invoices_v1";
 const SUPPLIER_LEDGER_KEY = "malwa_supplier_ledger_v1";
 
@@ -18,6 +18,11 @@ const Badge = ({ children, color = "gray" }) => (
 const Invoice = () => {
   // --- UI State ---
   const [showForm, setShowForm] = useState(false);
+  const [filteredInvoices, setFilteredInvoices] = useState([]);
+
+  useEffect(() => {
+    setFilteredInvoices(invoices);
+  }, [invoices]);
 
   // --- Data State ---
   const [invoices, setInvoices] = useState(() => {
@@ -132,15 +137,27 @@ const Invoice = () => {
     setLedger((prev) => prev.filter((l) => l.id !== id));
   };
 
+  const handleSearch = (searchTerm) => {
+    const term = searchTerm.toLowerCase();
+    const filtered = invoices.filter(
+      (inv) =>
+        inv.supplier.toLowerCase().includes(term) ||
+        inv.item.toLowerCase().includes(term) ||
+        inv.status.toLowerCase().includes(term)
+    );
+    setFilteredInvoices(filtered);
+  };
+
+  const handleReset = () => {
+    setFilteredInvoices(invoices);
+  };
+
   return (
     <div className="p-6 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Sell-Invoices</h2>
-          {/* <p className="text-sm text-gray-600">
-            Manage supplier invoices with GST & payment status.
-          </p> */}
         </div>
 
         <button
@@ -153,6 +170,13 @@ const Invoice = () => {
           Add Sell-Invoice
         </button>
       </div>
+
+      {/* Search Bar */}
+      <SearchBar
+        onSearch={handleSearch}
+        onReset={handleReset}
+        searchFields={['supplier', 'item', 'status']}
+      />
 
       {/* Table */}
       <div className="border rounded shadow-sm bg-white p-4">
@@ -178,7 +202,7 @@ const Invoice = () => {
                 </tr>
               </thead>
               <tbody>
-                {invoices.map((inv) => (
+                {filteredInvoices.map((inv) => (
                   <tr key={inv.id} className="hover:bg-gray-50">
                     <td className="p-2 border text-sm">{inv.id}</td>
                     <td className="p-2 border text-sm">{inv.supplier}</td>

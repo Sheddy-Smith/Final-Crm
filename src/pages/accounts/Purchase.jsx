@@ -1,8 +1,8 @@
 
 
-// final code and completed
 import React, { useState, useEffect } from "react";
 import { PlusCircle, Edit, Trash } from "lucide-react";
+import SearchBar from "../../components/common/SearchBar";
 
 const Purchase = () => {
   const [open, setOpen] = useState(false);
@@ -28,6 +28,12 @@ const Purchase = () => {
           },
         ];
   });
+
+  const [filteredMaterials, setFilteredMaterials] = useState([]);
+
+  useEffect(() => {
+    setFilteredMaterials(materials);
+  }, [materials]);
 
   // LocalStorage me save karna
   useEffect(() => {
@@ -146,6 +152,23 @@ const Purchase = () => {
     setMaterials(filtered);
   };
 
+  const handleSearch = (searchTerm) => {
+    const term = searchTerm.toLowerCase();
+    const filtered = materials.filter(
+      (m) =>
+        m.name.toLowerCase().includes(term) ||
+        m.supplier.toLowerCase().includes(term) ||
+        m.category.toLowerCase().includes(term) ||
+        m.source.toLowerCase().includes(term) ||
+        m.payment.toLowerCase().includes(term)
+    );
+    setFilteredMaterials(filtered);
+  };
+
+  const handleReset = () => {
+    setFilteredMaterials(materials);
+  };
+
   return (
     <div className="p-6">
       {/* Header */}
@@ -158,6 +181,13 @@ const Purchase = () => {
           <PlusCircle /> Add
         </button>
       </div>
+
+      {/* Search Bar */}
+      <SearchBar
+        onSearch={handleSearch}
+        onReset={handleReset}
+        searchFields={['name', 'supplier', 'category', 'payment']}
+      />
 
       {/* Table */}
       <div className="overflow-x-auto border rounded">
@@ -179,7 +209,7 @@ const Purchase = () => {
             </tr>
           </thead>
           <tbody>
-            {materials.map((m) => (
+            {filteredMaterials.map((m) => (
               <tr key={m.id} className="hover:bg-gray-50 text-center">
                 <td className="p-2 border">{m.id}</td>
                 <td className="p-2 border">{m.name}</td>

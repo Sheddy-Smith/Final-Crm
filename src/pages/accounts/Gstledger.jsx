@@ -1,7 +1,7 @@
 
 
-// done
 import React, { useState, useEffect } from "react";
+import SearchBar from "../../components/common/SearchBar";
 
 const GSTLedger = () => {
   // --- Purchase Data ---
@@ -34,6 +34,12 @@ const GSTLedger = () => {
     })),
   ];
 
+  const [filteredLedgerData, setFilteredLedgerData] = useState([]);
+
+  useEffect(() => {
+    setFilteredLedgerData(ledgerData);
+  }, [purchases, sells]);
+
   // Delete Function
   const handleDelete = (id, type) => {
     if (!window.confirm("Are you sure to delete?")) return;
@@ -53,11 +59,35 @@ const GSTLedger = () => {
     }
   };
 
+  const handleSearch = (searchTerm) => {
+    const term = searchTerm.toLowerCase();
+    const filtered = ledgerData.filter(
+      (row) =>
+        row.name.toLowerCase().includes(term) ||
+        row.supplier.toLowerCase().includes(term) ||
+        row.payment.toLowerCase().includes(term) ||
+        row.type.toLowerCase().includes(term) ||
+        (row.category !== "-" && row.category.toLowerCase().includes(term))
+    );
+    setFilteredLedgerData(filtered);
+  };
+
+  const handleReset = () => {
+    setFilteredLedgerData(ledgerData);
+  };
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">
         GST Ledger
       </h2>
+
+      {/* Search Bar */}
+      <SearchBar
+        onSearch={handleSearch}
+        onReset={handleReset}
+        searchFields={['material', 'supplier', 'payment', 'type', 'category']}
+      />
 
       <div className="overflow-x-auto shadow rounded-lg bg-white">
         <table className="min-w-full border-collapse border">
@@ -78,7 +108,7 @@ const GSTLedger = () => {
             </tr>
           </thead>
           <tbody>
-            {ledgerData.length === 0 && (
+            {filteredLedgerData.length === 0 && (
               <tr>
                 <td
                   colSpan="12"
@@ -89,7 +119,7 @@ const GSTLedger = () => {
               </tr>
             )}
 
-            {ledgerData.map((row, index) => (
+            {filteredLedgerData.map((row, index) => (
               <tr
                 key={`${row.type}-${row.id}`}
                 className="hover:bg-gray-50 transition-colors"

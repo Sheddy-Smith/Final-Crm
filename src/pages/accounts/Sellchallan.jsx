@@ -1,8 +1,8 @@
-
 import { useState, useEffect } from "react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { Trash2 } from "lucide-react";
+import SearchBar from "../../components/common/SearchBar";
 
 const SellChallan = () => {
   const [ledgerRows, setLedgerRows] = useState([]);
@@ -32,6 +32,7 @@ const SellChallan = () => {
   const [selectedRow, setSelectedRow] = useState(null);
   const [savedBills, setSavedBills] = useState([]);
   const [kaccheChallans, setKaccheChallans] = useState([]);
+  const [filteredKaccheChallans, setFilteredKaccheChallans] = useState([]);
 
   // Load data from localStorage
   useEffect(() => {
@@ -60,7 +61,12 @@ const SellChallan = () => {
     setDiscount(disc);
     setSavedBills(storedBills);
     setKaccheChallans(storedKacche);
+    setFilteredKaccheChallans(storedKacche);
   }, []);
+
+  useEffect(() => {
+    setFilteredKaccheChallans(kaccheChallans);
+  }, [kaccheChallans]);
 
   // Delete ledger row
   const handleDelete = (index) => {
@@ -145,6 +151,21 @@ const SellChallan = () => {
   );
 
   const grandTotal = subtotalEstimate + subtotalExtra + subtotalAdded - discount;
+
+  const handleSearch = (searchTerm) => {
+    const term = searchTerm.toLowerCase();
+    const filtered = kaccheChallans.filter(
+      (ch) =>
+        ch.customerName.toLowerCase().includes(term) ||
+        ch.payment.toLowerCase().includes(term) ||
+        (ch.notes && ch.notes.toLowerCase().includes(term))
+    );
+    setFilteredKaccheChallans(filtered);
+  };
+
+  const handleReset = () => {
+    setFilteredKaccheChallans(kaccheChallans);
+  };
 
   return (
     <div className="space-y-4 p-4 relative">
@@ -278,6 +299,12 @@ const SellChallan = () => {
       {kaccheChallans.length > 0 && (
         <Card>
           <h3 className="text-lg font-bold mb-2">Kacche-Challan List</h3>
+          {/* Search Bar for Kacche Challan */}
+          <SearchBar
+            onSearch={handleSearch}
+            onReset={handleReset}
+            searchFields={['customer name', 'payment', 'notes']}
+          />
           <div className="overflow-x-auto">
             <table className="min-w-full border border-gray-300 text-sm">
               <thead className="bg-gray-100">
@@ -292,7 +319,7 @@ const SellChallan = () => {
                 </tr>
               </thead>
               <tbody>
-                {kaccheChallans.map((ch, i) => (
+                {filteredKaccheChallans.map((ch, i) => (
                   <tr key={i} className="hover:bg-gray-50">
                     <td className="border p-2">{ch.customerName}</td>
                     <td className="border p-2">{ch.date}</td>

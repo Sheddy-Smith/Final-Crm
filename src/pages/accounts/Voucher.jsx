@@ -8,6 +8,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Edit, Trash } from "lucide-react";
+import SearchBar from "../../components/common/SearchBar";
 
 const Voucher = () => {
   const [vouchers, setVouchers] = useState(() => {
@@ -17,6 +18,13 @@ const Voucher = () => {
 
   const [activeTab, setActiveTab] = useState("All");
   const [showForm, setShowForm] = useState(false);
+  const [filteredVouchers, setFilteredVouchers] = useState([]);
+
+  useEffect(() => {
+    const filtered =
+      activeTab === "All" ? vouchers : vouchers.filter((v) => v.type === activeTab);
+    setFilteredVouchers(filtered);
+  }, [activeTab, vouchers]);
 
   const [id, setId] = useState(null);
   const [type, setType] = useState("Vendor");
@@ -87,8 +95,24 @@ const Voucher = () => {
     setVouchers(vouchers.filter((v) => v.id !== id));
   };
 
-  const filteredVouchers =
-    activeTab === "All" ? vouchers : vouchers.filter((v) => v.type === activeTab);
+  const handleSearch = (searchTerm) => {
+    const term = searchTerm.toLowerCase();
+    const baseFiltered =
+      activeTab === "All" ? vouchers : vouchers.filter((v) => v.type === activeTab);
+    const filtered = baseFiltered.filter(
+      (v) =>
+        v.party.toLowerCase().includes(term) ||
+        v.type.toLowerCase().includes(term) ||
+        v.method.toLowerCase().includes(term)
+    );
+    setFilteredVouchers(filtered);
+  };
+
+  const handleResetSearch = () => {
+    const filtered =
+      activeTab === "All" ? vouchers : vouchers.filter((v) => v.type === activeTab);
+    setFilteredVouchers(filtered);
+  };
 
   // --- Totals ---
   const totalAll = vouchers.reduce((sum, v) => sum + v.amount, 0);
@@ -126,6 +150,13 @@ const Voucher = () => {
           + New Voucher
         </button>
       </div>
+
+      {/* Search Bar */}
+      <SearchBar
+        onSearch={handleSearch}
+        onReset={handleResetSearch}
+        searchFields={['party', 'type', 'method']}
+      />
 
       {/* Tabs */}
       <div className="flex gap-2">

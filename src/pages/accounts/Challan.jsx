@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect } from "react";
 import { PlusCircle, Edit, Trash } from "lucide-react";
+import SearchBar from "../../components/common/SearchBar";
 
 const Challan = () => {
   const [open, setOpen] = useState(false);
@@ -46,6 +47,12 @@ const Challan = () => {
           },
         ];
   });
+
+  const [filteredChallans, setFilteredChallans] = useState([]);
+
+  useEffect(() => {
+    setFilteredChallans(challans);
+  }, [challans]);
 
   // 🔹 Save Challans to localStorage
   useEffect(() => {
@@ -133,6 +140,22 @@ const Challan = () => {
     setChallans(filtered);
   };
 
+  const handleSearch = (searchTerm) => {
+    const term = searchTerm.toLowerCase();
+    const filtered = challans.filter(
+      (c) =>
+        c.challanNo.toLowerCase().includes(term) ||
+        c.source.toLowerCase().includes(term) ||
+        c.item.toLowerCase().includes(term) ||
+        c.payment.toLowerCase().includes(term)
+    );
+    setFilteredChallans(filtered);
+  };
+
+  const handleReset = () => {
+    setFilteredChallans(challans);
+  };
+
   return (
     <div className="p-6">
       {/* Header */}
@@ -145,6 +168,13 @@ const Challan = () => {
           <PlusCircle /> Add  Purchase-Challan
         </button>
       </div>
+
+      {/* Search Bar */}
+      <SearchBar
+        onSearch={handleSearch}
+        onReset={handleReset}
+        searchFields={['challan no', 'source', 'item', 'payment']}
+      />
 
       {/* Table */}
       <div className="overflow-x-auto border rounded">
@@ -165,7 +195,7 @@ const Challan = () => {
             </tr>
           </thead>
           <tbody>
-            {challans.map((c) => (
+            {filteredChallans.map((c) => (
               <tr key={c.id} className="hover:bg-gray-50 text-center">
                 <td className="p-2 border">{c.id}</td>
                 <td className="p-2 border">{c.challanNo}</td>
