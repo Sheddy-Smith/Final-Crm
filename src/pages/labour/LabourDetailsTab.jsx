@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { Edit, Trash2, PlusCircle } from 'lucide-react';
 
 const LabourForm = ({ labour, onSave, onCancel }) => {
-    const [formData, setFormData] = useState(labour || { name: '', phone: '', rate: '', skill: 'Welder', address: '', email: '', creditLimit: 0, notes: '' });
+    const [formData, setFormData] = useState(labour || { name: '', phone: '', rate: '', skill: 'Welder', address: '', email: '', creditLimit: 0, openingBalance: 0, openingBalanceDate: new Date().toISOString().split('T')[0], notes: '' });
     const [showAdvanced, setShowAdvanced] = useState(false);
     const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
     const handleSubmit = (e) => {
@@ -37,17 +37,28 @@ const LabourForm = ({ labour, onSave, onCancel }) => {
             {showAdvanced && (
                 <div className="space-y-4 bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
                     <div>
-                        <label>Email</label>
-                        <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full mt-1 p-2 border rounded-lg bg-transparent dark:border-gray-600 focus:ring-2 focus:ring-brand-red" />
+                        <label className="block text-sm font-medium dark:text-dark-text">Email</label>
+                        <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full mt-1 p-2 border rounded-lg bg-transparent dark:border-gray-600 dark:text-dark-text focus:ring-2 focus:ring-brand-red" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium dark:text-dark-text">Opening Balance (₹)</label>
+                            <input type="number" name="openingBalance" value={formData.openingBalance} onChange={handleChange} className="w-full mt-1 p-2 border rounded-lg bg-transparent dark:border-gray-600 dark:text-dark-text focus:ring-2 focus:ring-brand-red" step="0.01" />
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Positive = They owe, Negative = We owe</p>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium dark:text-dark-text">Opening Balance Date</label>
+                            <input type="date" name="openingBalanceDate" value={formData.openingBalanceDate} onChange={handleChange} className="w-full mt-1 p-2 border rounded-lg bg-transparent dark:border-gray-600 dark:text-dark-text focus:ring-2 focus:ring-brand-red" />
+                        </div>
                     </div>
                     <div>
-                        <label>Credit Limit (₹)</label>
-                        <input type="number" name="creditLimit" value={formData.creditLimit} onChange={handleChange} className="w-full mt-1 p-2 border rounded-lg bg-transparent dark:border-gray-600 focus:ring-2 focus:ring-brand-red" min="0" />
-                        <p className="text-xs text-gray-500 mt-1">Maximum outstanding amount allowed</p>
+                        <label className="block text-sm font-medium dark:text-dark-text">Credit Limit (₹)</label>
+                        <input type="number" name="creditLimit" value={formData.creditLimit} onChange={handleChange} className="w-full mt-1 p-2 border rounded-lg bg-transparent dark:border-gray-600 dark:text-dark-text focus:ring-2 focus:ring-brand-red" min="0" />
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Maximum outstanding amount allowed</p>
                     </div>
                     <div>
-                        <label>Notes</label>
-                        <textarea name="notes" value={formData.notes} onChange={handleChange} className="w-full mt-1 p-2 border rounded-lg bg-transparent dark:border-gray-600 focus:ring-2 focus:ring-brand-red" rows="3"></textarea>
+                        <label className="block text-sm font-medium dark:text-dark-text">Notes</label>
+                        <textarea name="notes" value={formData.notes} onChange={handleChange} className="w-full mt-1 p-2 border rounded-lg bg-transparent dark:border-gray-600 dark:text-dark-text focus:ring-2 focus:ring-brand-red" rows="3"></textarea>
                     </div>
                 </div>
             )}
