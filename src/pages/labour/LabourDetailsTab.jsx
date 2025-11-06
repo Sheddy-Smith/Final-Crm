@@ -8,7 +8,8 @@ import { toast } from 'sonner';
 import { Edit, Trash2 } from 'lucide-react';
 
 const LabourForm = ({ labour, onSave, onCancel }) => {
-    const [formData, setFormData] = useState(labour || { name: '', phone: '', rate: '', skill: 'Welder' });
+    const [formData, setFormData] = useState(labour || { name: '', phone: '', rate: '', skill: 'Welder', address: '', email: '', creditLimit: 0, notes: '' });
+    const [showAdvanced, setShowAdvanced] = useState(false);
     const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -21,6 +22,36 @@ const LabourForm = ({ labour, onSave, onCancel }) => {
             <div><label>Phone</label><input type="text" name="phone" value={formData.phone} onChange={handleChange} className="w-full mt-1 p-2 border rounded-lg bg-transparent dark:border-gray-600 focus:ring-2 focus:ring-brand-red" /></div>
             <div><label>Skill/Trade</label><input type="text" name="skill" value={formData.skill} onChange={handleChange} className="w-full mt-1 p-2 border rounded-lg bg-transparent dark:border-gray-600 focus:ring-2 focus:ring-brand-red" /></div>
             <div><label>Rate (₹ per day/hr)</label><input type="number" name="rate" value={formData.rate} onChange={handleChange} className="w-full mt-1 p-2 border rounded-lg bg-transparent dark:border-gray-600 focus:ring-2 focus:ring-brand-red" required /></div>
+            <div><label>Address</label><input type="text" name="address" value={formData.address} onChange={handleChange} className="w-full mt-1 p-2 border rounded-lg bg-transparent dark:border-gray-600 focus:ring-2 focus:ring-brand-red" /></div>
+
+            <div className="border-t pt-4 dark:border-gray-600">
+                <button
+                    type="button"
+                    onClick={() => setShowAdvanced(!showAdvanced)}
+                    className="text-brand-red hover:text-red-700 font-medium flex items-center gap-2"
+                >
+                    {showAdvanced ? '▼' : '▶'} Advanced Options
+                </button>
+            </div>
+
+            {showAdvanced && (
+                <div className="space-y-4 bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                    <div>
+                        <label>Email</label>
+                        <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full mt-1 p-2 border rounded-lg bg-transparent dark:border-gray-600 focus:ring-2 focus:ring-brand-red" />
+                    </div>
+                    <div>
+                        <label>Credit Limit (₹)</label>
+                        <input type="number" name="creditLimit" value={formData.creditLimit} onChange={handleChange} className="w-full mt-1 p-2 border rounded-lg bg-transparent dark:border-gray-600 focus:ring-2 focus:ring-brand-red" min="0" />
+                        <p className="text-xs text-gray-500 mt-1">Maximum outstanding amount allowed</p>
+                    </div>
+                    <div>
+                        <label>Notes</label>
+                        <textarea name="notes" value={formData.notes} onChange={handleChange} className="w-full mt-1 p-2 border rounded-lg bg-transparent dark:border-gray-600 focus:ring-2 focus:ring-brand-red" rows="3"></textarea>
+                    </div>
+                </div>
+            )}
+
             <div className="flex justify-end space-x-2"><Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button><Button type="submit">Save</Button></div>
         </form>
     );

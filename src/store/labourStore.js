@@ -6,7 +6,14 @@ const useLabourStore = create(
   persist(
     (set) => ({
       labours: [],
-      addLabour: (labour) => set((state) => ({ labours: [...state.labours, { id: uuidv4(), ledger: [], ...labour }] })),
+      addLabour: (labour) => set((state) => ({ labours: [...state.labours, {
+        id: uuidv4(),
+        ledger: [],
+        creditLimit: 0,
+        email: '',
+        notes: '',
+        ...labour
+      }] })),
       updateLabour: (updatedLabour) => set((state) => ({ labours: state.labours.map((l) => (l.id === updatedLabour.id ? updatedLabour : l)) })),
       deleteLabour: (labourId) => set((state) => ({ labours: state.labours.filter((l) => l.id !== labourId) })),
     }),

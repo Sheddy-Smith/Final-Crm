@@ -7,7 +7,14 @@ const useCustomerStore = create(
     (set) => ({
       customers: [],
       addCustomer: (customer) => set((state) => ({
-        customers: [...state.customers, { id: uuidv4(), ledger: [], ...customer }],
+        customers: [...state.customers, {
+          id: uuidv4(),
+          ledger: [],
+          creditLimit: 0,
+          email: '',
+          notes: '',
+          ...customer
+        }],
       })),
       updateCustomer: (updatedCustomer) => set((state) => ({
         customers: state.customers.map((c) => c.id === updatedCustomer.id ? updatedCustomer : c),

@@ -6,7 +6,14 @@ const useVendorStore = create(
   persist(
     (set) => ({
       vendors: [],
-      addVendor: (vendor) => set((state) => ({ vendors: [...state.vendors, { id: uuidv4(), ledger: [], ...vendor }] })),
+      addVendor: (vendor) => set((state) => ({ vendors: [...state.vendors, {
+        id: uuidv4(),
+        ledger: [],
+        creditLimit: 0,
+        email: '',
+        notes: '',
+        ...vendor
+      }] })),
       updateVendor: (updatedVendor) => set((state) => ({ vendors: state.vendors.map((v) => (v.id === updatedVendor.id ? updatedVendor : v)) })),
       deleteVendor: (vendorId) => set((state) => ({ vendors: state.vendors.filter((v) => v.id !== vendorId) })),
     }),
