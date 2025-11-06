@@ -3,6 +3,7 @@ import useVendorStore from '@/store/vendorStore';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import ConfirmModal from '@/components/ui/ConfirmModal';
+import SearchBar from '@/components/common/SearchBar';
 import { toast } from 'sonner';
 import { Edit, Trash2 } from 'lucide-react';
 
@@ -32,6 +33,19 @@ const VendorDetailsTab = () => {
     const [editingVendor, setEditingVendor] = useState(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [vendorToDelete, setVendorToDelete] = useState(null);
+    const [filteredVendors, setFilteredVendors] = useState(vendors);
+
+    const handleSearch = (term) => {
+        if (!term.trim()) { setFilteredVendors(vendors); return; }
+        const filtered = vendors.filter(v =>
+            v.name?.toLowerCase().includes(term.toLowerCase()) ||
+            v.phone?.toLowerCase().includes(term.toLowerCase()) ||
+            v.category?.toLowerCase().includes(term.toLowerCase())
+        );
+        setFilteredVendors(filtered);
+    };
+
+    const handleReset = () => setFilteredVendors(vendors);
 
     const handleEdit = (vendor) => {
         setEditingVendor(vendor);
@@ -57,6 +71,7 @@ const VendorDetailsTab = () => {
 
     return (
         <div>
+            <SearchBar onSearch={handleSearch} onReset={handleReset} searchFields={['name', 'phone', 'category']} />
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Edit Vendor">
                 <VendorForm vendor={editingVendor} onSave={handleSave} onCancel={() => setIsModalOpen(false)} />
             </Modal>
@@ -75,7 +90,7 @@ const VendorDetailsTab = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {vendors.length > 0 ? vendors.map(v => (
+                        {filteredVendors.length > 0 ? filteredVendors.map(v => (
                             <tr key={v.id} className="border-b dark:border-gray-700 even:bg-gray-50 dark:even:bg-gray-800/50">
                                 <td className="p-2 font-medium dark:text-dark-text">{v.name}</td><td className="p-2">{v.phone}</td><td className="p-2">{v.category}</td>
                                 <td className="p-2 text-right space-x-1">

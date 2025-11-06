@@ -3,6 +3,7 @@ import useSupplierStore from '@/store/supplierStore';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import ConfirmModal from '@/components/ui/ConfirmModal';
+import SearchBar from '@/components/common/SearchBar';
 import { toast } from 'sonner';
 import { Edit, Trash2 } from 'lucide-react';
 
@@ -30,6 +31,19 @@ const SupplierDetailsTab = () => {
     const [editingSupplier, setEditingSupplier] = useState(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [supplierToDelete, setSupplierToDelete] = useState(null);
+    const [filteredSuppliers, setFilteredSuppliers] = useState(suppliers);
+
+    const handleSearch = (term) => {
+        if (!term.trim()) { setFilteredSuppliers(suppliers); return; }
+        const filtered = suppliers.filter(s =>
+            s.name?.toLowerCase().includes(term.toLowerCase()) ||
+            s.phone?.toLowerCase().includes(term.toLowerCase()) ||
+            s.category?.toLowerCase().includes(term.toLowerCase())
+        );
+        setFilteredSuppliers(filtered);
+    };
+
+    const handleReset = () => setFilteredSuppliers(suppliers);
 
     const handleEdit = (supplier) => {
         setEditingSupplier(supplier);
@@ -52,6 +66,7 @@ const SupplierDetailsTab = () => {
 
     return (
         <div>
+            <SearchBar onSearch={handleSearch} onReset={handleReset} searchFields={['name', 'phone', 'category']} />
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Edit Supplier">
                 <SupplierForm supplier={editingSupplier} onSave={handleSave} onCancel={() => setIsModalOpen(false)} />
             </Modal>
@@ -68,7 +83,7 @@ const SupplierDetailsTab = () => {
                         <tr><th className="p-2">Name</th><th className="p-2">Phone</th><th className="p-2">Category</th><th className="p-2 text-right">Actions</th></tr>
                     </thead>
                     <tbody>
-                        {suppliers.length > 0 ? suppliers.map(s => (
+                        {filteredSuppliers.length > 0 ? filteredSuppliers.map(s => (
                             <tr key={s.id} className="border-b dark:border-gray-700 even:bg-gray-50 dark:even:bg-gray-800/50">
                                 <td className="p-2 font-medium dark:text-dark-text">{s.name}</td><td className="p-2">{s.phone}</td><td className="p-2">{s.category}</td>
                                 <td className="p-2 text-right space-x-1">

@@ -99,14 +99,14 @@ const StockTab = () => {
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 ? (
+            {filteredRows.length === 0 ? (
               <tr>
                 <td colSpan="9" className="text-center p-3 text-gray-500">
                   No Stock Movement Data Found
                 </td>
               </tr>
             ) : (
-              rows.map((row, index) => (
+              filteredRows.map((row, index) => (
                 <tr key={index} className="hover:bg-gray-50">
                   <td className="border p-2 text-center">{row.date}</td>
 

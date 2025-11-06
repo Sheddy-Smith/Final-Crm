@@ -3,6 +3,7 @@ import useCustomerStore from '@/store/customerStore';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import ConfirmModal from '@/components/ui/ConfirmModal';
+import SearchBar from '@/components/common/SearchBar';
 import { toast } from 'sonner';
 import { Edit, Trash2 } from 'lucide-react';
 
@@ -55,6 +56,26 @@ const ContactsTab = () => {
     const [editingCustomer, setEditingCustomer] = useState(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [customerToDelete, setCustomerToDelete] = useState(null);
+    const [filteredCustomers, setFilteredCustomers] = useState(customers);
+
+    const handleSearch = (searchTerm) => {
+        if (!searchTerm.trim()) {
+            setFilteredCustomers(customers);
+            return;
+        }
+        const term = searchTerm.toLowerCase();
+        const filtered = customers.filter(c =>
+            c.name?.toLowerCase().includes(term) ||
+            c.phone?.toLowerCase().includes(term) ||
+            c.address?.toLowerCase().includes(term) ||
+            c.gstin?.toLowerCase().includes(term)
+        );
+        setFilteredCustomers(filtered);
+    };
+
+    const handleReset = () => {
+        setFilteredCustomers(customers);
+    };
 
     const handleEdit = (customer) => {
         setEditingCustomer(customer);
@@ -80,6 +101,12 @@ const ContactsTab = () => {
 
     return (
         <div>
+            <SearchBar
+                onSearch={handleSearch}
+                onReset={handleReset}
+                searchFields={['name', 'phone', 'address', 'GSTIN']}
+            />
+
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Edit Customer">
                 <CustomerForm customer={editingCustomer} onSave={handleSave} onCancel={() => setIsModalOpen(false)} />
             </Modal>
@@ -100,7 +127,7 @@ const ContactsTab = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {customers.length > 0 ? customers.map(c => (
+                        {filteredCustomers.length > 0 ? filteredCustomers.map(c => (
                             <tr key={c.id} className="border-b dark:border-gray-700 even:bg-gray-50 dark:even:bg-gray-800/50">
                                 <td className="p-2 font-medium dark:text-dark-text">{c.name}</td><td className="p-2">{c.phone}</td>
                                 <td className="p-2">{c.address}</td><td className="p-2">{c.gstin}</td>

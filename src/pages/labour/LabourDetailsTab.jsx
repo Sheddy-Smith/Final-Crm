@@ -3,6 +3,7 @@ import useLabourStore from '@/store/labourStore';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import ConfirmModal from '@/components/ui/ConfirmModal';
+import SearchBar from '@/components/common/SearchBar';
 import { toast } from 'sonner';
 import { Edit, Trash2 } from 'lucide-react';
 
@@ -31,6 +32,19 @@ const LabourDetailsTab = () => {
     const [editingLabour, setEditingLabour] = useState(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [labourToDelete, setLabourToDelete] = useState(null);
+    const [filteredLabours, setFilteredLabours] = useState(labours);
+
+    const handleSearch = (term) => {
+        if (!term.trim()) { setFilteredLabours(labours); return; }
+        const filtered = labours.filter(l =>
+            l.name?.toLowerCase().includes(term.toLowerCase()) ||
+            l.phone?.toLowerCase().includes(term.toLowerCase()) ||
+            l.skill?.toLowerCase().includes(term.toLowerCase())
+        );
+        setFilteredLabours(filtered);
+    };
+
+    const handleReset = () => setFilteredLabours(labours);
 
     const handleEdit = (labour) => {
         setEditingLabour(labour);
@@ -53,6 +67,7 @@ const LabourDetailsTab = () => {
 
     return (
         <div>
+            <SearchBar onSearch={handleSearch} onReset={handleReset} searchFields={['name', 'phone', 'skill']} />
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Edit Labour Details">
                 <LabourForm labour={editingLabour} onSave={handleSave} onCancel={() => setIsModalOpen(false)} />
             </Modal>
@@ -69,7 +84,7 @@ const LabourDetailsTab = () => {
                         <tr><th className="p-2">Name</th><th className="p-2">Phone</th><th className="p-2">Skill/Role</th><th className="p-2">Rate</th><th className="p-2 text-right">Actions</th></tr>
                     </thead>
                     <tbody>
-                        {labours.length > 0 ? labours.map(l => (
+                        {filteredLabours.length > 0 ? filteredLabours.map(l => (
                             <tr key={l.id} className="border-b dark:border-gray-700 even:bg-gray-50 dark:even:bg-gray-800/50">
                                 <td className="p-2 font-medium dark:text-dark-text">{l.name}</td><td className="p-2">{l.phone}</td><td className="p-2">{l.skill}</td><td className="p-2">{l.rate}</td>
                                 <td className="p-2 text-right space-x-1">
