@@ -4,9 +4,23 @@ import React, { useState, useEffect } from "react";
 import { SaveAllIcon, Trash2 } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import SearchBar from "@/components/common/SearchBar";
 
 const StockTab = () => {
   const [rows, setRows] = useState([]);
+  const [filteredRows, setFilteredRows] = useState([]);
+
+  const handleSearch = (term) => {
+    if (!term.trim()) { setFilteredRows(rows); return; }
+    const filtered = rows.filter(r =>
+      r.item?.toLowerCase().includes(term.toLowerCase()) ||
+      r.linkedTo?.toLowerCase().includes(term.toLowerCase()) ||
+      r.referral?.toLowerCase().includes(term.toLowerCase())
+    );
+    setFilteredRows(filtered);
+  };
+
+  const handleReset = () => setFilteredRows(rows);
 
   // Load from JobSheet (estimate + extraWork) with robust cost/total logic
   useEffect(() => {
@@ -54,6 +68,7 @@ const StockTab = () => {
     });
 
     setRows(transformedRows);
+    setFilteredRows(transformedRows);
     localStorage.setItem("stockMovements", JSON.stringify(transformedRows));
   }, []);
 
@@ -82,6 +97,7 @@ const StockTab = () => {
   return (
     <Card className="p-4 mt-2">
       <h2 className="text-lg font-semibold mb-4">📦 Stock Movements</h2>
+      <SearchBar onSearch={handleSearch} onReset={handleReset} searchFields={['item', 'category', 'referral']} />
 
       <div className="overflow-x-auto">
         <table className="min-w-full border border-gray-300 text-sm">
