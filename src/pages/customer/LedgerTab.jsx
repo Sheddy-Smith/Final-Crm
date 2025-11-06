@@ -18,6 +18,9 @@ const CustomerLedger = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedCustomerName, setSelectedCustomerName] = useState(null);
 
+  const [vehicleSearch, setVehicleSearch] = useState("");
+  const [challanInvoices, setChallanInvoices] = useState([]);
+
   const [showAddPopup, setShowAddPopup] = useState(false);
   const [showViewPopup, setShowViewPopup] = useState(false);
   const [showBillPopup, setShowBillPopup] = useState(false);
@@ -68,6 +71,16 @@ const CustomerLedger = () => {
     setLedgerRows(transformedRows);
     setDiscount(disc);
     setSavedBills(storedBills);
+
+    const challans = JSON.parse(localStorage.getItem("sellChallans") || "[]");
+    const invoices = JSON.parse(localStorage.getItem("sellInvoices") || "[]");
+
+    const combinedData = [
+      ...challans.map(c => ({ ...c, type: 'Challan', docNo: c.challanNo || 'N/A' })),
+      ...invoices.map(i => ({ ...i, type: 'Invoice', docNo: i.invoiceNo || 'N/A' }))
+    ];
+
+    setChallanInvoices(combinedData);
   }, []);
 
   const handleDelete = (index) => {
@@ -458,68 +471,131 @@ const CustomerLedger = () => {
         </div>
 
         <Card className="p-6">
-          <h3 className="text-xl font-bold mb-4">Job Sheet Items</h3>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-bold">Sell Challan & Invoice Movement</h3>
+            <div className="relative w-80">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+              <input
+                type="text"
+                placeholder="Search by Vehicle No. or Customer Name..."
+                value={vehicleSearch}
+                onChange={(e) => setVehicleSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700 focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
           <div className="overflow-x-auto">
-            <table className="min-w-full border border-gray-300 text-sm">
+            <table className="min-w-full">
               <thead className="bg-gray-100 dark:bg-gray-700">
                 <tr>
-                  <th className="border p-2">Category</th>
-                  <th className="border p-2">Item</th>
-                  <th className="border p-2">Condition</th>
-                  <th className="border p-2 text-right">Cost (₹)</th>
-                  <th className="border p-2 text-right">Multiplier</th>
-                  <th className="border p-2 text-right">Total (₹)</th>
-                  <th className="border p-2">Work By</th>
-                  <th className="border p-2">Notes</th>
-                  <th className="border p-2 text-center">Action</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">Type</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">Doc No</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">Date</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">Customer Name</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">Vehicle No</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">Vehicle Model</th>
+                  <th className="px-4 py-3 text-right text-sm font-semibold">Total Amount (₹)</th>
+                  <th className="px-4 py-3 text-center text-sm font-semibold">Status</th>
+                  <th className="px-4 py-3 text-center text-sm font-semibold">Actions</th>
                 </tr>
               </thead>
-              <tbody>
-                {ledgerRows.length === 0 ? (
-                  <tr>
-                    <td colSpan="9" className="text-center p-8 text-gray-500">
-                      No job sheet items found
-                    </td>
-                  </tr>
-                ) : (
-                  ledgerRows.map((row, index) => (
-                    <tr
-                      key={index}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
-                      onClick={() => handleRowClick(row)}
-                    >
-                      <td className="border p-2">{row.category}</td>
-                      <td className="border p-2">{row.item}</td>
-                      <td className="border p-2">{row.condition || "OK"}</td>
-                      <td className="border p-2 text-right">{parseFloat(row.cost).toFixed(2)}</td>
-                      <td className="border p-2 text-right">{parseFloat(row.multiplier).toFixed(2)}</td>
-                      <td className="border p-2 text-right font-semibold">{parseFloat(row.total).toFixed(2)}</td>
-                      <td className="border p-2">{row.workBy || "Labour"}</td>
-                      <td className="border p-2">{row.notes || ""}</td>
-                      <td className="border p-2 text-center">
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {challanInvoices
+                  .filter(item => {
+                    const searchLower = vehicleSearch.toLowerCase();
+                    return (
+                      item.vehicleNumber?.toLowerCase().includes(searchLower) ||
+                      item.customerName?.toLowerCase().includes(searchLower) ||
+                      item.name?.toLowerCase().includes(searchLower)
+                    );
+                  })
+                  .map((item, index) => (
+                    <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                      <td className="px-4 py-3">
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          item.type === 'Challan'
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                            : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                        }`}>
+                          {item.type}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm font-medium">{item.docNo}</td>
+                      <td className="px-4 py-3 text-sm">{item.date || 'N/A'}</td>
+                      <td className="px-4 py-3 text-sm font-medium">{item.customerName || item.name || 'N/A'}</td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded font-mono text-xs">
+                          {item.vehicleNumber || 'N/A'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm">{item.vehicleModel || item.model || 'N/A'}</td>
+                      <td className="px-4 py-3 text-right text-sm font-semibold text-blue-600">
+                        ₹{parseFloat(item.totalAmount || item.grandTotal || 0).toFixed(2)}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          item.paymentStatus === 'Paid'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {item.paymentStatus || 'Pending'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(index);
-                          }}
-                          className="text-red-600 hover:text-red-800"
+                          onClick={() => handleViewCustomerLedger(item.customerName || item.name)}
+                          className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50"
+                          title="View Customer Ledger"
                         >
-                          <Trash2 size={18} />
+                          <Eye size={18} />
                         </button>
                       </td>
                     </tr>
-                  ))
-                )}
+                  ))}
               </tbody>
             </table>
+
+            {challanInvoices.filter(item => {
+              const searchLower = vehicleSearch.toLowerCase();
+              return (
+                item.vehicleNumber?.toLowerCase().includes(searchLower) ||
+                item.customerName?.toLowerCase().includes(searchLower) ||
+                item.name?.toLowerCase().includes(searchLower)
+              );
+            }).length === 0 && (
+              <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                <Clock size={48} className="mx-auto mb-3 opacity-50" />
+                <p className="text-lg font-medium">No challan or invoice found</p>
+                <p className="text-sm">Create sell challans or invoices from the Accounts section</p>
+              </div>
+            )}
           </div>
 
           <div className="mt-4 text-right font-semibold space-y-1">
-            <div>Subtotal (Estimate): ₹{subtotalEstimate.toFixed(2)}</div>
-            <div>Subtotal (Extra Work): ₹{subtotalExtra.toFixed(2)}</div>
-            <div>Subtotal (Added Items): ₹{subtotalAdded.toFixed(2)}</div>
-            <div>Discount: ₹{discount.toFixed(2)}</div>
-            <div className="text-xl text-blue-600">Grand Total: ₹{grandTotal.toFixed(2)}</div>
+            <div className="text-sm text-gray-500">
+              Total Documents: {challanInvoices.filter(item => {
+                const searchLower = vehicleSearch.toLowerCase();
+                return (
+                  item.vehicleNumber?.toLowerCase().includes(searchLower) ||
+                  item.customerName?.toLowerCase().includes(searchLower) ||
+                  item.name?.toLowerCase().includes(searchLower)
+                );
+              }).length}
+            </div>
+            <div className="text-xl text-blue-600">
+              Total Value: ₹{challanInvoices
+                .filter(item => {
+                  const searchLower = vehicleSearch.toLowerCase();
+                  return (
+                    item.vehicleNumber?.toLowerCase().includes(searchLower) ||
+                    item.customerName?.toLowerCase().includes(searchLower) ||
+                    item.name?.toLowerCase().includes(searchLower)
+                  );
+                })
+                .reduce((sum, item) => sum + parseFloat(item.totalAmount || item.grandTotal || 0), 0)
+                .toFixed(2)}
+            </div>
           </div>
         </Card>
       </div>
