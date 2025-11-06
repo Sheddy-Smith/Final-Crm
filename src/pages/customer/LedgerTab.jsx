@@ -2,11 +2,12 @@
 
 
 
-// // completed and final code 
+// // completed and final code
 import { useState, useEffect } from "react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
-import { Trash2 } from "lucide-react";
+import { Trash2, Eye } from "lucide-react";
+import CustomerLedgerDisplay from "@/components/customer/CustomerLedgerDisplay";
 
 const CustomerLedger = () => {
   const [ledgerRows, setLedgerRows] = useState([]);
@@ -41,6 +42,8 @@ const CustomerLedger = () => {
   });
 
   const [savedBills, setSavedBills] = useState([]);
+  const [showLedgerDisplay, setShowLedgerDisplay] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
 
   useEffect(() => {
     const estimateData = JSON.parse(localStorage.getItem("jobSheetEstimate") || "[]");
@@ -157,6 +160,18 @@ const CustomerLedger = () => {
 
   const grandTotal = subtotalEstimate + subtotalExtra + subtotalAdded - discount;
 
+  const handleViewCustomerLedger = (customerName) => {
+    setSelectedCustomer({
+      name: customerName,
+      customerName: customerName,
+      phone: 'N/A',
+      gst: 'N/A',
+      address: 'N/A',
+      city: 'N/A',
+    });
+    setShowLedgerDisplay(true);
+  };
+
   return (
     <div className="space-y-4 p-4 relative">
       <div className="flex justify-between items-center">
@@ -164,6 +179,16 @@ const CustomerLedger = () => {
       <Button onClick={() => setShowAddPopup(true)}>Add Customer</Button>
       </div>
         <h3 className="text-xl font-bold mb-2">Jobs sheet (Challan) </h3>
+
+      {showLedgerDisplay && selectedCustomer && (
+        <CustomerLedgerDisplay
+          customer={selectedCustomer}
+          onClose={() => {
+            setShowLedgerDisplay(false);
+            setSelectedCustomer(null);
+          }}
+        />
+      )}
 
       {/* Add Customer Popup */}
       {showAddPopup && (
@@ -520,6 +545,7 @@ const CustomerLedger = () => {
                   <th className="border p-2">Amount (₹)</th>
                   <th className="border p-2">Category</th>
                   <th className="border p-2">Item</th>
+                  <th className="border p-2 text-center">View Ledger</th>
                   <th className="border p-2 text-center">Delete</th>
                 </tr>
               </thead>
@@ -533,6 +559,15 @@ const CustomerLedger = () => {
                     <td className="border p-2">{parseFloat(bill.amountReceived || bill.totalAmount).toFixed(2)}</td>
                     <td className="border p-2">{bill.category}</td>
                     <td className="border p-2">{bill.item}</td>
+                    <td className="border p-2 text-center">
+                      <button
+                        onClick={() => handleViewCustomerLedger(bill.customerName)}
+                        className="text-blue-600 hover:text-blue-800 font-semibold"
+                        title="View Full Ledger"
+                      >
+                        <Eye />
+                      </button>
+                    </td>
                     <td className="border p-2 text-center">
                       <button
                         onClick={() => {
