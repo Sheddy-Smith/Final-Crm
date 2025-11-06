@@ -32,3 +32,43 @@ export function amountInWords(num) {
   }
   return inWords.trim().replace(/\s+/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
+
+export const calculateWithMultiplier = (baseAmount, quantity, category, workBy, multiplierStore) => {
+  const amount = baseAmount * quantity;
+
+  let multiplier = 1;
+  if (category && multiplierStore) {
+    multiplier = multiplierStore.getCategoryMultiplier(category);
+  } else if (workBy && multiplierStore) {
+    multiplier = multiplierStore.getMultiplierByWorkType(workBy);
+  }
+
+  return {
+    baseAmount: amount,
+    multiplier,
+    finalAmount: amount * multiplier,
+  };
+};
+
+export const calculateGST = (amount, gstRate = 18) => {
+  const gstAmount = (amount * gstRate) / 100;
+  return {
+    taxableAmount: amount,
+    cgst: gstAmount / 2,
+    sgst: gstAmount / 2,
+    totalGST: gstAmount,
+    totalAmount: amount + gstAmount,
+  };
+};
+
+export const formatCurrency = (amount) => {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 2,
+  }).format(amount);
+};
+
+export const formatNumber = (num) => {
+  return new Intl.NumberFormat('en-IN').format(num);
+};
