@@ -7,8 +7,9 @@ import InvoiceSettingsTab from './settings/InvoiceSettingsTab';
 import BackupSettingsTab from './settings/BackupSettingsTab';
 import SecuritySettingsTab from './settings/SecuritySettingsTab';
 import MultiplierSettingsTab from './settings/MultiplierSettingsTab';
+import CompanyMasterTab from './settings/CompanyMasterTab';
 import AboutTab from './settings/AboutTab';
-import { Settings as SettingsIcon, Users, Calculator, Package, FileText, Database, Printer, Shield, Info, Cloud, Wrench, Percent } from 'lucide-react';
+import { Settings as SettingsIcon, Users, Calculator, Package, FileText, Database, Printer, Shield, Info, Cloud, Wrench, Percent, Building } from 'lucide-react';
 
 const Placeholder = ({ title, icon: Icon }) => (
   <div className="dark:text-dark-text text-center py-12">
@@ -21,6 +22,12 @@ const Placeholder = ({ title, icon: Icon }) => (
 );
 
 const tabs = [
+  {
+    id: 'company',
+    label: 'Company Master',
+    icon: Building,
+    component: CompanyMasterTab
+  },
   {
     id: 'general',
     label: 'General',
