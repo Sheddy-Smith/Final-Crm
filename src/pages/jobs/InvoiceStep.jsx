@@ -4,15 +4,79 @@
 
 
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { Save, Printer } from "lucide-react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-
+import JobSearchBar from "@/components/jobs/JobSearchBar";
+import JobReportList from "@/components/jobs/JobReportList";
+import ConfirmModal from "@/components/ui/ConfirmModal";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 const InvoiceStep = () => {
+  const [records, setRecords] = useState([]);
+  const [filteredRecords, setFilteredRecords] = useState([]);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+
+  useEffect(() => {
+    loadRecords();
+  }, []);
+
+  const loadRecords = async () => {
+    const { data, error } = await supabase
+      .from('jobs_invoice')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      setRecords(data);
+      setFilteredRecords(data);
+    }
+  };
+
+  const handleSearch = (filters) => {
+    let filtered = [...records];
+    if (filters.vehicleNo) {
+      filtered = filtered.filter(r => r.vehicle_no.toLowerCase().includes(filters.vehicleNo.toLowerCase()));
+    }
+    if (filters.partyName) {
+      filtered = filtered.filter(r => r.party_name.toLowerCase().includes(filters.partyName.toLowerCase()));
+    }
+    if (filters.dateFrom) {
+      filtered = filtered.filter(r => r.date >= filters.dateFrom);
+    }
+    if (filters.dateTo) {
+      filtered = filtered.filter(r => r.date <= filters.dateTo);
+    }
+    setFilteredRecords(filtered);
+  };
+
+  const handleReset = () => {
+    setFilteredRecords(records);
+  };
+
+  const handleEditRecord = (record) => {
+    toast.info('Load record feature coming soon');
+  };
+
+  const handleDeleteRecord = async (id) => {
+    const { error } = await supabase
+      .from('jobs_invoice')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      toast.error('Failed to delete invoice');
+      return;
+    }
+
+    toast.success('Invoice deleted successfully');
+    loadRecords();
+    setDeleteConfirmId(null);
+  };
   // Job Sheet data (static)
   const jobSheetEstimate = JSON.parse(localStorage.getItem("jobSheetEstimate") || "[]");
   const extraWork = JSON.parse(localStorage.getItem("extraWork") || "[]");
@@ -226,6 +290,23 @@ const handleSaveInvoice = () => {
 
         </div>
       </Card>
+
+      <JobSearchBar onSearch={handleSearch} onReset={handleReset} />
+
+      <JobReportList
+        records={filteredRecords}
+        onEdit={handleEditRecord}
+        onDelete={(id) => setDeleteConfirmId(id)}
+        stepName="Invoice"
+      />
+
+      <ConfirmModal
+        isOpen={!!deleteConfirmId}
+        onClose={() => setDeleteConfirmId(null)}
+        onConfirm={() => handleDeleteRecord(deleteConfirmId)}
+        title="Delete Invoice"
+        message="Are you sure you want to delete this invoice record? This action cannot be undone."
+      />
     </div>
   );
 };

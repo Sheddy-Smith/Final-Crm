@@ -6,8 +6,73 @@
 
 import { Save } from "lucide-react";
 import React, { useState, useEffect } from "react";
+import JobSearchBar from "@/components/jobs/JobSearchBar";
+import JobReportList from "@/components/jobs/JobReportList";
+import ConfirmModal from "@/components/ui/ConfirmModal";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 const JobSheetStep = () => {
+  const [records, setRecords] = useState([]);
+  const [filteredRecords, setFilteredRecords] = useState([]);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+
+  useEffect(() => {
+    loadRecords();
+  }, []);
+
+  const loadRecords = async () => {
+    const { data, error } = await supabase
+      .from('jobs_jobsheet')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      setRecords(data);
+      setFilteredRecords(data);
+    }
+  };
+
+  const handleSearch = (filters) => {
+    let filtered = [...records];
+    if (filters.vehicleNo) {
+      filtered = filtered.filter(r => r.vehicle_no.toLowerCase().includes(filters.vehicleNo.toLowerCase()));
+    }
+    if (filters.partyName) {
+      filtered = filtered.filter(r => r.party_name.toLowerCase().includes(filters.partyName.toLowerCase()));
+    }
+    if (filters.dateFrom) {
+      filtered = filtered.filter(r => r.date >= filters.dateFrom);
+    }
+    if (filters.dateTo) {
+      filtered = filtered.filter(r => r.date <= filters.dateTo);
+    }
+    setFilteredRecords(filtered);
+  };
+
+  const handleReset = () => {
+    setFilteredRecords(records);
+  };
+
+  const handleEditRecord = (record) => {
+    toast.info('Load record feature coming soon');
+  };
+
+  const handleDeleteRecord = async (id) => {
+    const { error } = await supabase
+      .from('jobs_jobsheet')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      toast.error('Failed to delete job sheet');
+      return;
+    }
+
+    toast.success('Job sheet deleted successfully');
+    loadRecords();
+    setDeleteConfirmId(null);
+  };
   // Load data directly from Vehicle Inspection (Inspection Items)
   const [estimateItems, setEstimateItems] = useState(() => {
     const saved = localStorage.getItem("inspectionItems");
@@ -317,6 +382,23 @@ const JobSheetStep = () => {
         <div>Estimate Discount: ₹{discount.toFixed(2)}</div>
         <div>Final Total: ₹{finalTotal.toFixed(2)}</div>
       </div>
+
+      <JobSearchBar onSearch={handleSearch} onReset={handleReset} />
+
+      <JobReportList
+        records={filteredRecords}
+        onEdit={handleEditRecord}
+        onDelete={(id) => setDeleteConfirmId(id)}
+        stepName="Job Sheet"
+      />
+
+      <ConfirmModal
+        isOpen={!!deleteConfirmId}
+        onClose={() => setDeleteConfirmId(null)}
+        onConfirm={() => handleDeleteRecord(deleteConfirmId)}
+        title="Delete Job Sheet"
+        message="Are you sure you want to delete this job sheet record? This action cannot be undone."
+      />
     </div>
   );
 };

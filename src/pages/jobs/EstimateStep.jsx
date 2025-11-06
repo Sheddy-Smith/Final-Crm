@@ -1,25 +1,30 @@
-
-
-
-  // correct code 
 import { useEffect, useState } from "react";
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+import Button from "@/components/ui/Button";
+import Card from "@/components/ui/Card";
+import JobSearchBar from "@/components/jobs/JobSearchBar";
+import JobReportList from "@/components/jobs/JobReportList";
+import ConfirmModal from "@/components/ui/ConfirmModal";
+import { PlusCircle, Save, Printer } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 const EstimateStep = () => {
-  // LocalStorage se inspection items load karo
-  const [items] = useState(() => {
-    const saved = localStorage.getItem("inspectionItems");
-    return saved ? JSON.parse(saved) : [];
+  const [items, setItems] = useState([]);
+  const [discount, setDiscount] = useState(0);
+  const [records, setRecords] = useState([]);
+  const [filteredRecords, setFilteredRecords] = useState([]);
+  const [currentRecordId, setCurrentRecordId] = useState(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+
+  const [details, setDetails] = useState({
+    vehicleNo: "",
+    partyName: "",
+    date: new Date().toISOString().split('T')[0],
+    branch: "",
+    status: "in-progress",
   });
 
-  // LocalStorage se discount load karo
-  const [discount, setDiscount] = useState(() => {
-    const saved = localStorage.getItem("estimateDiscount");
-    return saved ? parseFloat(saved) : 0;
-  });
-
-  // Default multipliers (agar manual multiplier na diya gaya ho)
   const defaultMultipliers = {
     Hardware: 2,
     Steel: 1.5,
@@ -27,39 +32,188 @@ const EstimateStep = () => {
     Parts: 1.5,
   };
 
-  // Har item ka total nikalne ka function (manual multiplier support ke sath)
-  const calculateTotal = (item) => {
-    const cost = parseFloat(item.cost) || 0;
-    // manual multiplier (agar InspectionStep me user ne diya ho)
-    const customMultiplier = parseFloat(item.multiplier) || null;
-    const categoryMultiplier = defaultMultipliers[item.category?.trim()] || 1;
-    const finalMultiplier = customMultiplier ?? categoryMultiplier; // agar custom hai to wahi lo
-    return cost * finalMultiplier;
-  };
+  useEffect(() => {
+    const saved = localStorage.getItem("inspectionItems");
+    const localItems = saved ? JSON.parse(saved) : [];
+    setItems(localItems);
 
-  // Subtotal aur Discount ke baad total
-  const subTotal = items.reduce((acc, item) => acc + calculateTotal(item), 0);
-  const totalAfterDiscount = subTotal - (parseFloat(discount) || 0);
+    const savedDiscount = localStorage.getItem("estimateDiscount");
+    setDiscount(savedDiscount ? parseFloat(savedDiscount) : 0);
 
-  // Jab discount change ho to localStorage me save karo
+    loadRecords();
+  }, []);
+
   useEffect(() => {
     localStorage.setItem("estimateDiscount", discount.toString());
   }, [discount]);
 
-  // PDF Save karne ka function
+  const loadRecords = async () => {
+    const { data, error } = await supabase
+      .from('jobs_estimate')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      toast.error('Failed to load estimate records');
+      return;
+    }
+
+    setRecords(data || []);
+    setFilteredRecords(data || []);
+  };
+
+  const handleSearch = (filters) => {
+    let filtered = [...records];
+    if (filters.vehicleNo) {
+      filtered = filtered.filter(r => r.vehicle_no.toLowerCase().includes(filters.vehicleNo.toLowerCase()));
+    }
+    if (filters.partyName) {
+      filtered = filtered.filter(r => r.party_name.toLowerCase().includes(filters.partyName.toLowerCase()));
+    }
+    if (filters.dateFrom) {
+      filtered = filtered.filter(r => r.date >= filters.dateFrom);
+    }
+    if (filters.dateTo) {
+      filtered = filtered.filter(r => r.date <= filters.dateTo);
+    }
+    setFilteredRecords(filtered);
+  };
+
+  const handleReset = () => {
+    setFilteredRecords(records);
+  };
+
+  const calculateTotal = (item) => {
+    const cost = parseFloat(item.cost) || 0;
+    const customMultiplier = parseFloat(item.multiplier) || null;
+    const categoryMultiplier = defaultMultipliers[item.category?.trim()] || 1;
+    const finalMultiplier = customMultiplier ?? categoryMultiplier;
+    return cost * finalMultiplier;
+  };
+
+  const subTotal = items.reduce((acc, item) => acc + calculateTotal(item), 0);
+  const totalAfterDiscount = subTotal - (parseFloat(discount) || 0);
+
+  const saveEstimate = async () => {
+    if (!details.vehicleNo || !details.partyName) {
+      toast.error('Vehicle No and Party Name are required');
+      return;
+    }
+
+    const payload = {
+      vehicle_no: details.vehicleNo,
+      party_name: details.partyName,
+      date: details.date,
+      branch: details.branch,
+      status: details.status,
+      items: items,
+      discount: discount,
+      total: totalAfterDiscount,
+      user_id: (await supabase.auth.getUser()).data.user?.id
+    };
+
+    if (currentRecordId) {
+      const { error } = await supabase
+        .from('jobs_estimate')
+        .update(payload)
+        .eq('id', currentRecordId);
+
+      if (error) {
+        toast.error('Failed to update estimate');
+        return;
+      }
+      toast.success('Estimate updated successfully');
+    } else {
+      const { data, error } = await supabase
+        .from('jobs_estimate')
+        .insert([payload])
+        .select()
+        .single();
+
+      if (error) {
+        toast.error('Failed to save estimate');
+        return;
+      }
+      setCurrentRecordId(data.id);
+      toast.success('Estimate saved successfully');
+    }
+
+    loadRecords();
+  };
+
+  const handleEditRecord = (record) => {
+    setCurrentRecordId(record.id);
+    setDetails({
+      vehicleNo: record.vehicle_no,
+      partyName: record.party_name,
+      date: record.date,
+      branch: record.branch,
+      status: record.status,
+    });
+    setItems(record.items || []);
+    setDiscount(record.discount || 0);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    toast.info('Record loaded for editing');
+  };
+
+  const handleDeleteRecord = async (id) => {
+    const { error } = await supabase
+      .from('jobs_estimate')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      toast.error('Failed to delete estimate');
+      return;
+    }
+
+    toast.success('Estimate deleted successfully');
+    loadRecords();
+    setDeleteConfirmId(null);
+
+    if (currentRecordId === id) {
+      setCurrentRecordId(null);
+      setDetails({
+        vehicleNo: "",
+        partyName: "",
+        date: new Date().toISOString().split('T')[0],
+        branch: "",
+        status: "in-progress",
+      });
+      setItems([]);
+      setDiscount(0);
+    }
+  };
+
+  const handleNewRecord = () => {
+    setCurrentRecordId(null);
+    setDetails({
+      vehicleNo: "",
+      partyName: "",
+      date: new Date().toISOString().split('T')[0],
+      branch: "",
+      status: "in-progress",
+    });
+    const saved = localStorage.getItem("inspectionItems");
+    setItems(saved ? JSON.parse(saved) : []);
+    setDiscount(0);
+    toast.info('Ready for new estimate');
+  };
+
   const handleSavePDF = () => {
     const input = document.getElementById("estimate-body");
-    html2canvas(input, { scale: 2 }).then((canvas) => {
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-      pdf.save("estimate.pdf");
+    import('html2canvas').then(html2canvas => {
+      html2canvas.default(input, { scale: 2 }).then((canvas) => {
+        const imgData = canvas.toDataURL("image/png");
+        const pdf = new jsPDF("p", "mm", "a4");
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+        pdf.save("estimate.pdf");
+      });
     });
   };
 
-  // Print karne ka function
   const handlePrint = () => {
     const printContent = document.getElementById("estimate-body");
     const WinPrint = window.open("", "", "width=900,height=650");
@@ -72,19 +226,59 @@ const EstimateStep = () => {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-xl font-bold">Estimate</h3>
+      <div className="flex justify-between items-center">
+        <h3 className="text-xl font-bold">Estimate</h3>
+        <Button onClick={handleNewRecord} variant="secondary" size="sm">
+          <PlusCircle className="h-4 w-4 mr-2" />
+          New Estimate
+        </Button>
+      </div>
 
-      {/* Estimate Table + Summary */}
-      <div id="estimate-body" className="overflow-x-auto border p-4 rounded">
-        <table className="w-full text-sm border">
-          <thead className="bg-gray-50 text-left">
+      <Card>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div>
+            <label className="font-medium">Vehicle No:</label>
+            <input
+              type="text"
+              value={details.vehicleNo}
+              onChange={(e) => setDetails({ ...details, vehicleNo: e.target.value })}
+              className="w-full mt-1 p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            />
+          </div>
+          <div>
+            <label className="font-medium">Party Name:</label>
+            <input
+              type="text"
+              value={details.partyName}
+              onChange={(e) => setDetails({ ...details, partyName: e.target.value })}
+              className="w-full mt-1 p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            />
+          </div>
+          <div>
+            <label className="font-medium">Status:</label>
+            <select
+              value={details.status}
+              onChange={(e) => setDetails({ ...details, status: e.target.value })}
+              className="w-full mt-1 p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            >
+              <option value="in-progress">Work in Progress</option>
+              <option value="complete">Complete</option>
+              <option value="hold">Hold for Material</option>
+            </select>
+          </div>
+        </div>
+      </Card>
+
+      <div id="estimate-body" className="overflow-x-auto border p-4 rounded dark:border-gray-700">
+        <table className="w-full text-sm border dark:border-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-800 text-left">
             <tr>
-              <th className="p-2 border">Category</th>
-              <th className="p-2 border">Item</th>
-              <th className="p-2 border">Condition</th>
-              <th className="p-2 border">Cost (₹)</th>
-              <th className="p-2 border">Multiplier</th>
-              <th className="p-2 border">Total (₹)</th>
+              <th className="p-2 border dark:border-gray-700">Category</th>
+              <th className="p-2 border dark:border-gray-700">Item</th>
+              <th className="p-2 border dark:border-gray-700">Condition</th>
+              <th className="p-2 border dark:border-gray-700">Cost</th>
+              <th className="p-2 border dark:border-gray-700">Multiplier</th>
+              <th className="p-2 border dark:border-gray-700">Total</th>
             </tr>
           </thead>
           <tbody>
@@ -96,21 +290,20 @@ const EstimateStep = () => {
               </tr>
             )}
             {items.map((item, index) => (
-              <tr key={index} className="border-b">
-                <td className="p-2 border">{item.category}</td>
-                <td className="p-2 border">{item.item}</td>
-                <td className="p-2 border">{item.condition}</td>
-                <td className="p-2 border">{item.cost}</td>
-                <td className="p-2 border">
+              <tr key={index} className="border-b dark:border-gray-700">
+                <td className="p-2 border dark:border-gray-700">{item.category}</td>
+                <td className="p-2 border dark:border-gray-700">{item.item}</td>
+                <td className="p-2 border dark:border-gray-700">{item.condition}</td>
+                <td className="p-2 border dark:border-gray-700">{item.cost}</td>
+                <td className="p-2 border dark:border-gray-700">
                   {item.multiplier || defaultMultipliers[item.category?.trim()] || 1}
                 </td>
-                <td className="p-2 border">{calculateTotal(item).toFixed(2)}</td>
+                <td className="p-2 border dark:border-gray-700">{calculateTotal(item).toFixed(2)}</td>
               </tr>
             ))}
           </tbody>
         </table>
 
-        {/* Summary */}
         <div className="mt-4 text-right">
           <div className="mb-2">Subtotal: ₹{subTotal.toFixed(2)}</div>
           <div className="mb-2">
@@ -118,23 +311,44 @@ const EstimateStep = () => {
             <input
               type="number"
               value={discount}
-              onChange={(e) => setDiscount(parseFloat(e.target.value)||0)}
-              className="ml-2 w-20 p-1 border rounded"
+              onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
+              className="ml-2 w-20 p-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             />
           </div>
           <div className="font-bold">Total: ₹{totalAfterDiscount.toFixed(2)}</div>
         </div>
       </div>
 
-      {/* Buttons */}
-      <div className="flex space-x-2 mt-4 justify-end">
-        <button onClick={handleSavePDF} className="bg-green-500 text-white px-4 py-2 rounded">
+      <div className="flex space-x-2 justify-end">
+        <Button onClick={saveEstimate}>
+          <Save className="h-4 w-4 mr-2" />
+          {currentRecordId ? 'Update' : 'Save'} Estimate
+        </Button>
+        <Button onClick={handleSavePDF} variant="secondary">
           Save PDF
-        </button>
-        <button onClick={handlePrint} className="bg-blue-500 text-white px-4 py-2 rounded">
+        </Button>
+        <Button onClick={handlePrint} variant="secondary">
+          <Printer className="h-4 w-4 mr-2" />
           Print
-        </button>
+        </Button>
       </div>
+
+      <JobSearchBar onSearch={handleSearch} onReset={handleReset} />
+
+      <JobReportList
+        records={filteredRecords}
+        onEdit={handleEditRecord}
+        onDelete={(id) => setDeleteConfirmId(id)}
+        stepName="Estimate"
+      />
+
+      <ConfirmModal
+        isOpen={!!deleteConfirmId}
+        onClose={() => setDeleteConfirmId(null)}
+        onConfirm={() => handleDeleteRecord(deleteConfirmId)}
+        title="Delete Estimate"
+        message="Are you sure you want to delete this estimate record? This action cannot be undone."
+      />
     </div>
   );
 };

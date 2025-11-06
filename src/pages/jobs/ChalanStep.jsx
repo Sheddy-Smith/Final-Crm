@@ -4,8 +4,73 @@ import Button from "@/components/ui/Button";
 import { Save, Printer, Trash2 } from "lucide-react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import JobSearchBar from "@/components/jobs/JobSearchBar";
+import JobReportList from "@/components/jobs/JobReportList";
+import ConfirmModal from "@/components/ui/ConfirmModal";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 const ChalanStep = () => {
+  const [records, setRecords] = useState([]);
+  const [filteredRecords, setFilteredRecords] = useState([]);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+
+  useEffect(() => {
+    loadRecords();
+  }, []);
+
+  const loadRecords = async () => {
+    const { data, error } = await supabase
+      .from('jobs_chalan')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      setRecords(data);
+      setFilteredRecords(data);
+    }
+  };
+
+  const handleSearch = (filters) => {
+    let filtered = [...records];
+    if (filters.vehicleNo) {
+      filtered = filtered.filter(r => r.vehicle_no.toLowerCase().includes(filters.vehicleNo.toLowerCase()));
+    }
+    if (filters.partyName) {
+      filtered = filtered.filter(r => r.party_name.toLowerCase().includes(filters.partyName.toLowerCase()));
+    }
+    if (filters.dateFrom) {
+      filtered = filtered.filter(r => r.date >= filters.dateFrom);
+    }
+    if (filters.dateTo) {
+      filtered = filtered.filter(r => r.date <= filters.dateTo);
+    }
+    setFilteredRecords(filtered);
+  };
+
+  const handleReset = () => {
+    setFilteredRecords(records);
+  };
+
+  const handleEditRecord = (record) => {
+    toast.info('Load record feature coming soon');
+  };
+
+  const handleDeleteRecord = async (id) => {
+    const { error } = await supabase
+      .from('jobs_chalan')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      toast.error('Failed to delete chalan');
+      return;
+    }
+
+    toast.success('Chalan deleted successfully');
+    loadRecords();
+    setDeleteConfirmId(null);
+  };
   const [jobSheetEstimate, setJobSheetEstimate] = useState([]);
   const [extraWork, setExtraWork] = useState([]);
   const [discount, setDiscount] = useState(0);
@@ -168,6 +233,23 @@ const ChalanStep = () => {
           </Button>
         </div>
       </Card>
+
+      <JobSearchBar onSearch={handleSearch} onReset={handleReset} />
+
+      <JobReportList
+        records={filteredRecords}
+        onEdit={handleEditRecord}
+        onDelete={(id) => setDeleteConfirmId(id)}
+        stepName="Chalan"
+      />
+
+      <ConfirmModal
+        isOpen={!!deleteConfirmId}
+        onClose={() => setDeleteConfirmId(null)}
+        onConfirm={() => handleDeleteRecord(deleteConfirmId)}
+        title="Delete Chalan"
+        message="Are you sure you want to delete this chalan record? This action cannot be undone."
+      />
     </div>
   );
 };
