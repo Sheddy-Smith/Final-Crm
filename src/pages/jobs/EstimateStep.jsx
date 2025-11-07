@@ -6,11 +6,12 @@ import JobSearchBar from "@/components/jobs/JobSearchBar";
 import JobReportList from "@/components/jobs/JobReportList";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import { PlusCircle, Save, Printer } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import useAuthStore from "@/store/authStore";
 import { toast } from "sonner";
 import useMultiplierStore from "@/store/multiplierStore";
 
 const EstimateStep = () => {
+  const { user } = useAuthStore();
   const [items, setItems] = useState([]);
   const [discount, setDiscount] = useState(0);
   const [records, setRecords] = useState([]);
@@ -110,7 +111,7 @@ const EstimateStep = () => {
       items: items,
       discount: discount,
       total: totalAfterDiscount,
-      user_id: (await supabase.auth.getUser()).data.user?.id
+      user_id: user?.id
     };
 
     if (currentRecordId) {

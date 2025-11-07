@@ -1,4 +1,3 @@
-import { supabase } from '@/lib/supabase';
 import { indexedDB, STORES } from './indexedDB';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -8,6 +7,7 @@ class SyncManager {
     this.isSyncing = false;
     this.syncInterval = null;
     this.listeners = new Set();
+    this.localOnlyMode = true;
 
     window.addEventListener('online', () => this.handleOnlineStatus(true));
     window.addEventListener('offline', () => this.handleOnlineStatus(false));
@@ -18,10 +18,9 @@ class SyncManager {
     this.notifyListeners();
 
     if (online) {
-      console.log('🟢 Online - Starting sync...');
-      this.syncAll();
+      console.log('🟢 Online - Local-only mode (no remote sync)');
     } else {
-      console.log('🔴 Offline - Queue mode activated');
+      console.log('🔴 Offline - Local-only mode');
     }
   }
 
@@ -46,11 +45,7 @@ class SyncManager {
     };
 
     await indexedDB.put(STORES.syncQueue, queueItem);
-    console.log('📝 Added to sync queue:', queueItem);
-
-    if (this.isOnline) {
-      await this.processSyncQueue();
-    }
+    console.log('📝 Added to local queue (no remote sync):', queueItem);
   }
 
   async processSyncQueue() {
@@ -60,14 +55,15 @@ class SyncManager {
     const queue = await indexedDB.getAll(STORES.syncQueue);
     const pendingItems = queue.filter((item) => item.status === 'pending');
 
-    console.log(`🔄 Processing ${pendingItems.length} pending sync items...`);
+    console.log(`🔄 Processing ${pendingItems.length} local queue items...`);
 
     for (const item of pendingItems) {
       try {
-        await this.syncItem(item);
-        await indexedDB.delete(STORES.syncQueue, item.id);
+        item.status = 'completed';
+        await indexedDB.put(STORES.syncQueue, item);
+        console.log('✅ Queue item marked as completed (local only):', item.id);
       } catch (error) {
-        console.error('Sync error:', error);
+        console.error('Queue processing error:', error);
         item.retries++;
         item.status = item.retries > 3 ? 'failed' : 'pending';
         await indexedDB.put(STORES.syncQueue, item);
@@ -75,46 +71,7 @@ class SyncManager {
     }
 
     this.isSyncing = false;
-    console.log('✅ Sync queue processed');
-  }
-
-  async syncItem(item) {
-    const { action, storeName, data } = item;
-    const userId = data.user_id;
-
-    if (!userId) {
-      throw new Error('No user_id in sync item');
-    }
-
-    const tableName = this.getSupabaseTableName(storeName);
-
-    switch (action) {
-      case 'create':
-        const { error: createError } = await supabase.from(tableName).insert(data);
-        if (createError) throw createError;
-        break;
-
-      case 'update':
-        const { error: updateError } = await supabase
-          .from(tableName)
-          .update(data)
-          .eq('id', data.id)
-          .eq('user_id', userId);
-        if (updateError) throw updateError;
-        break;
-
-      case 'delete':
-        const { error: deleteError } = await supabase
-          .from(tableName)
-          .delete()
-          .eq('id', data.id)
-          .eq('user_id', userId);
-        if (deleteError) throw deleteError;
-        break;
-
-      default:
-        throw new Error(`Unknown action: ${action}`);
-    }
+    console.log('✅ Local queue processed (no remote sync)');
   }
 
   getSupabaseTableName(storeName) {
@@ -133,46 +90,8 @@ class SyncManager {
   }
 
   async syncFromSupabase(userId) {
-    if (!this.isOnline) {
-      console.log('⚠️ Offline - Cannot sync from Supabase');
-      return;
-    }
-
-    console.log('📥 Syncing data from Supabase...');
-
-    try {
-      const tables = [
-        'customers',
-        'vendors',
-        'suppliers',
-        'labours',
-        'inventory',
-        'jobs',
-        'ledger_entries',
-        'settings',
-        'companies',
-      ];
-
-      for (const table of tables) {
-        const { data, error } = await supabase
-          .from(table)
-          .select('*')
-          .eq('user_id', userId);
-
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-          const storeName = this.getStoreNameFromTable(table);
-          await indexedDB.bulkPut(storeName, data);
-          console.log(`✅ Synced ${data.length} ${table} records`);
-        }
-      }
-
-      console.log('✅ Sync from Supabase complete');
-    } catch (error) {
-      console.error('Sync from Supabase error:', error);
-      throw error;
-    }
+    console.log('⚠️ Remote sync disabled - using local-only storage');
+    return;
   }
 
   getStoreNameFromTable(tableName) {
@@ -191,8 +110,7 @@ class SyncManager {
   }
 
   async syncAll() {
-    if (!this.isOnline) return;
-
+    console.log('⚠️ Remote sync disabled - all data stored locally only');
     await this.processSyncQueue();
   }
 
@@ -208,19 +126,17 @@ class SyncManager {
     }
 
     this.syncInterval = setInterval(() => {
-      if (this.isOnline) {
-        this.processSyncQueue();
-      }
+      this.processSyncQueue();
     }, intervalMs);
 
-    console.log(`🔄 Auto-sync started (every ${intervalMs / 1000}s)`);
+    console.log(`🔄 Auto-queue processing started (every ${intervalMs / 1000}s) - local only`);
   }
 
   stopAutoSync() {
     if (this.syncInterval) {
       clearInterval(this.syncInterval);
       this.syncInterval = null;
-      console.log('⏹️ Auto-sync stopped');
+      console.log('⏹️ Auto-queue processing stopped');
     }
   }
 }

@@ -6,10 +6,11 @@ import ConfirmModal from "@/components/ui/ConfirmModal";
 import { PlusCircle, Trash2, Edit, Save, X } from "lucide-react";
 import JobSearchBar from "@/components/jobs/JobSearchBar";
 import JobReportList from "@/components/jobs/JobReportList";
-import { supabase } from "@/lib/supabase";
+import useAuthStore from "@/store/authStore";
 import { toast } from "sonner";
 
 const InspectionStep = () => {
+  const { user } = useAuthStore();
   const [details, setDetails] = useState({
     vehicleNo: "",
     ownerName: "",
@@ -122,7 +123,7 @@ const InspectionStep = () => {
       branch: details.branch,
       status: details.status,
       items: items,
-      user_id: (await supabase.auth.getUser()).data.user?.id
+      user_id: user?.id
     };
 
     if (currentRecordId) {
