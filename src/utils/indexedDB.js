@@ -2,6 +2,7 @@ const DB_NAME = 'MalwaCRM_DB';
 const DB_VERSION = 1;
 
 const STORES = {
+  profiles: 'profiles',
   customers: 'customers',
   vendors: 'vendors',
   suppliers: 'suppliers',

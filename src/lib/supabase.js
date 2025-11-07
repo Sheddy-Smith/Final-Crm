@@ -1,8 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
+// Supabase has been removed - using local IndexedDB only
+// This file is kept to prevent import errors in legacy code
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+export const supabase = null;
 
-export const supabase = supabaseUrl && supabaseAnonKey
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null;
+console.info('✅ Application configured for local-only storage using IndexedDB');
