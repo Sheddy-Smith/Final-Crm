@@ -14,41 +14,29 @@ import Accounts from '@/pages/Accounts';
 import Summary from '@/pages/Summary';
 import Settings from '@/pages/Settings';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import OfflineIndicator from '@/components/OfflineIndicator';
 import useAuthStore from './store/authStore';
 import CashRecipt from "./pages/CashRecipt";
-import { syncManager } from '@/utils/syncManager';
-import { indexedDB } from '@/utils/indexedDB';
+import { localDB } from '@/utils/localDatabase';
 
 function App() {
   const { isAuthenticated, user } = useAuthStore();
 
   useEffect(() => {
-    const initOfflineSupport = async () => {
+    const initLocalDatabase = async () => {
       try {
-        await indexedDB.init();
-        console.log('✅ IndexedDB initialized');
-
-        if (isAuthenticated && user?.id) {
-          await syncManager.syncFromSupabase(user.id);
-          syncManager.startAutoSync(30000);
-        }
+        await localDB.init();
+        console.log('✅ Local IndexedDB initialized');
       } catch (error) {
-        console.error('Failed to initialize offline support:', error);
+        console.error('Failed to initialize local database:', error);
       }
     };
 
-    initOfflineSupport();
-
-    return () => {
-      syncManager.stopAutoSync();
-    };
+    initLocalDatabase();
   }, [isAuthenticated, user]);
 
   return (
     <>
       <Toaster position="top-right" richColors closeButton />
-      <OfflineIndicator />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route

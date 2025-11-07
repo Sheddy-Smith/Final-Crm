@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import useCustomerStore from '@/store/customerStore';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
@@ -92,12 +92,20 @@ const CustomerForm = ({ customer, onSave, onCancel }) => {
 }
 
 const ContactsTab = () => {
-    const { customers, addCustomer, updateCustomer, deleteCustomer } = useCustomerStore();
+    const { customers, loadCustomers, addCustomer, updateCustomer, deleteCustomer } = useCustomerStore();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [customerToDelete, setCustomerToDelete] = useState(null);
     const [filteredCustomers, setFilteredCustomers] = useState(customers);
+
+    useEffect(() => {
+        loadCustomers();
+    }, [loadCustomers]);
+
+    useEffect(() => {
+        setFilteredCustomers(customers);
+    }, [customers]);
 
     const handleSearch = (searchTerm) => {
         if (!searchTerm.trim()) {
@@ -128,16 +136,20 @@ const ContactsTab = () => {
         setIsModalOpen(true);
     };
 
-    const handleSave = (customerData) => {
-        if (editingCustomer) {
-            updateCustomer({ ...editingCustomer, ...customerData });
-            toast.success("Customer updated!");
-        } else {
-            addCustomer(customerData);
-            toast.success("Customer added!");
+    const handleSave = async (customerData) => {
+        try {
+            if (editingCustomer) {
+                await updateCustomer(editingCustomer.id, customerData);
+                toast.success("Customer updated!");
+            } else {
+                await addCustomer(customerData);
+                toast.success("Customer added!");
+            }
+            setIsModalOpen(false);
+            setEditingCustomer(null);
+        } catch (error) {
+            toast.error("Failed to save customer: " + error.message);
         }
-        setIsModalOpen(false);
-        setEditingCustomer(null);
     };
 
     const handleDelete = (customer) => {

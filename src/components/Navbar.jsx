@@ -1,12 +1,11 @@
 import { useLocation } from 'react-router-dom';
-import { Search, Bell, Menu, Wifi, WifiOff, Cloud, HardDrive } from 'lucide-react';
+import { Search, Bell, Menu, Database } from 'lucide-react';
 import useUiStore from '@/store/uiStore';
 import useJobsStore from '@/store/jobsStore';
 import ThemeToggle from './ThemeToggle';
 import VehicleSearchModal from './VehicleSearchModal';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { useOfflineStatus } from '@/hooks/useOfflineStatus';
 
 const Navbar = () => {
   const location = useLocation();
@@ -14,7 +13,6 @@ const Navbar = () => {
   const jobs = useJobsStore(state => state.jobs);
   const pageTitle = location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || 'Dashboard';
   const formattedTitle = pageTitle.charAt(0).toUpperCase() + pageTitle.slice(1);
-  const isOnline = useOfflineStatus();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -105,18 +103,9 @@ const Navbar = () => {
             </div>
           )}
         </div>
-        <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800" title={isOnline ? 'Online - Syncing to cloud' : 'Offline - Data saved locally'}>
-          {isOnline ? (
-            <>
-              <Cloud className="h-4 w-4 text-green-600 dark:text-green-400" />
-              <span className="text-xs font-medium text-green-600 dark:text-green-400">Online</span>
-            </>
-          ) : (
-            <>
-              <HardDrive className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-              <span className="text-xs font-medium text-orange-600 dark:text-orange-400">Offline</span>
-            </>
-          )}
+        <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/30" title="Local Database - All data stored on this device">
+          <Database className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Local DB</span>
         </div>
         <ThemeToggle />
         <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 relative">
