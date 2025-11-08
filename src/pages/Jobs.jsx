@@ -7,7 +7,7 @@ import EstimateStep from './jobs/EstimateStep';
 import JobSheetStep from './jobs/JobSheetStep';
 import ChalanStep from './jobs/ChalanStep';
 import InvoiceStep from './jobs/InvoiceStep';
-import useJobsStore, { initializeDefaultJob } from '@/store/jobsStore';
+import useJobsStore from '@/store/jobsStore';
 import { motion } from 'framer-motion';
 
 const steps = [
@@ -21,12 +21,16 @@ const steps = [
 const Jobs = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentStep, setCurrentStep] = useState(0);
-  const jobs = useJobsStore(state => state.jobs);
-  
-  const activeJobId = Object.keys(jobs)[0]; 
+  const { jobs, fetchJobs, currentJobId } = useJobsStore(state => ({
+    jobs: state.jobs,
+    fetchJobs: state.fetchJobs,
+    currentJobId: state.currentJobId
+  }));
+
+  const activeJobId = currentJobId || (jobs.length > 0 ? jobs[0].id : null);
 
   useEffect(() => {
-    initializeDefaultJob();
+    fetchJobs();
   }, []);
 
   useEffect(() => {
